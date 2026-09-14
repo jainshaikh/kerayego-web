@@ -1,6 +1,6 @@
 import { Market } from '../../types/api.types';
 
-// Mirrors rental-marketplace-backend/src/config/markets.config.ts exactly —
+// Mirrors kerayego-backend/src/config/markets.config.ts exactly —
 // keep both in sync if a market is added or its metadata changes.
 export interface MarketMeta {
   code: Market;
