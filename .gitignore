@@ -15,3 +15,9 @@
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+#Documents
+*.docs
+docs/
+CLAUDE.md
+/CLAUDE.md
