@@ -26,7 +26,13 @@ function titleCase(s: string): string {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const res = await fetchTripById(params.id);
-  if (!res?.data) return { title: 'Trip Not Found' };
+  // notFound() here (not fallback metadata) catches a bad id at the metadata
+  // step too, matching the vehicle detail page's fix (see its longer note —
+  // app/(public)/rent-a-car/[city]/[makeModel]/[slug]/page.tsx). This route
+  // has no loading.tsx ancestor, so the page component's own notFound() below
+  // already sets a real 404 on its own; this fetch is deduped against that
+  // identical call via Next's request memoization, so adding it here is free.
+  if (!res?.data) notFound();
 
   const t = res.data;
   const description = `Trip from ${titleCase(t.originCity)} to ${titleCase(t.destinationCity)} on ${formatTripDate(t.departureAt, { dateStyle: 'medium' })}. ${getCurrencyCode(t.userVehicle?.country)} ${Number(t.pricePerSeat).toLocaleString()} per seat.`;
@@ -308,7 +314,7 @@ export default async function TripDetailPage({ params }: PageProps) {
                   label="WhatsApp the driver"
                 />
                 <p className="mt-2.5 text-center text-xs text-text-faint">
-                  The driver accepts or declines your request — you'll be notified either way
+                  The driver accepts or declines your request — you&apos;ll be notified either way
                 </p>
               </div>
 

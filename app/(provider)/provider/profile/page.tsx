@@ -583,7 +583,7 @@ export default function ProviderProfilePage() {
         <div className="rounded-xl border border-slate-200 bg-white p-6">
           <h2 className="mb-1 font-semibold text-slate-900">Submit for review</h2>
           <p className="mb-6 text-sm text-slate-500">
-            Once submitted, our admin team will review your profile within 1–2 business days. You'll
+            Once submitted, our admin team will review your profile within 1–2 business days. You&apos;ll
             be notified by email when approved.
           </p>
 

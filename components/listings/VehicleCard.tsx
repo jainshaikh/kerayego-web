@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Image as ImageIcon, MapPin, Users } from 'lucide-react';
 import { cn } from '../../lib/utils/cn';
 import type { ListingVehicleCard } from '../../lib/api/listings.api';
@@ -16,10 +17,17 @@ interface VehicleCardProps {
 }
 
 export function VehicleCard({ vehicle, className }: VehicleCardProps) {
+  const router = useRouter();
   const cover = vehicle.images?.[0];
   const price = Number(vehicle.pricePerDay).toLocaleString();
   const currency = getCurrencyCode(vehicle.showroom?.country);
   const location = vehicle.showroom?.city ?? vehicle.locationText ?? null;
+  const providerSlug = vehicle.providerProfile?.slug;
+
+  const goToProvider = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    if (providerSlug) router.push(`/providers/${providerSlug}`);
+  };
 
   return (
     <Link
@@ -84,12 +92,14 @@ export function VehicleCard({ vehicle, className }: VehicleCardProps) {
 
         {/* Provider + location */}
         <div className="mt-3.5 flex items-center justify-between border-t border-border-subtle pt-3.5">
-          <Link
-            href={
-              vehicle.providerProfile?.slug ? `/providers/${vehicle.providerProfile.slug}` : '#'
-            }
-            onClick={(e) => e.stopPropagation()}
-            className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-text-muted hover:text-brand-700"
+          <div
+            role="link"
+            tabIndex={providerSlug ? 0 : -1}
+            onClick={goToProvider}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') goToProvider(e);
+            }}
+            className="flex min-w-0 cursor-pointer items-center gap-1.5 text-xs font-medium text-text-muted hover:text-brand-700"
           >
             <Avatar
               name={vehicle.providerProfile?.businessName || '?'}
@@ -100,7 +110,7 @@ export function VehicleCard({ vehicle, className }: VehicleCardProps) {
             <span className="truncate">
               {vehicle.providerProfile?.businessName ?? 'Unknown provider'}
             </span>
-          </Link>
+          </div>
           {vehicle.distanceKm !== undefined ? (
             <span className="ml-2 flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand-700">
               <MapPin className="h-3 w-3" />

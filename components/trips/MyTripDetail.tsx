@@ -5,12 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronRight, Inbox } from 'lucide-react';
-import { useMyTrip, useCancelTrip } from '../../hooks/useTrips';
+import { useMyTrip, useCancelTrip, useStartTrip } from '../../hooks/useTrips';
 import { useTripInquiryInbox, useUpdateTripInquiryStatus } from '../../hooks/useTripInquiries';
 import { StatusBadge } from '../common/StatusBadge';
 import { Button, Card, ConfirmDialog, ErrorState, Modal, Textarea } from '../ui';
 import { getCurrencyCode } from '../../lib/utils/currency';
 import { formatTripDateTime } from '../../lib/utils/datetime';
+import { DriverCockpit } from './live/DriverCockpit';
 
 interface MyTripDetailProps {
   backHref: string; // e.g. '/dashboard/trips'
@@ -32,7 +33,9 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
   const router = useRouter();
   const { data: trip, isLoading, isError } = useMyTrip(id);
   const cancelTrip = useCancelTrip();
+  const startTrip = useStartTrip();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmStart, setConfirmStart] = useState(false);
 
   const { data: inquiriesRes, isLoading: inquiriesLoading } = useTripInquiryInbox({ tripId: id });
   const updateInquiryStatus = useUpdateTripInquiryStatus();
@@ -55,6 +58,14 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
         />
       </div>
     );
+  }
+
+  // A started trip is a fundamentally different screen (live map + manifest,
+  // no inquiry inbox, no vehicle gallery) — branch here rather than forking
+  // this component's own JSX. MyTripDetail keeps owning data-loading and
+  // error/breadcrumb state either way.
+  if (trip.status === 'IN_PROGRESS') {
+    return <DriverCockpit trip={trip} backHref={backHref} />;
   }
 
   return (
@@ -91,9 +102,14 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
           </div>
 
           {trip.status === 'ACTIVE' && (
-            <Button variant="danger-outline" size="sm" onClick={() => setConfirmCancel(true)}>
-              Cancel trip
-            </Button>
+            <div className="flex flex-shrink-0 items-center gap-2.5">
+              <Button variant="danger-outline" size="sm" onClick={() => setConfirmCancel(true)}>
+                Cancel trip
+              </Button>
+              <Button size="sm" onClick={() => setConfirmStart(true)}>
+                Start trip
+              </Button>
+            </div>
           )}
         </div>
 
@@ -277,6 +293,20 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
           await cancelTrip.mutateAsync({ id: trip.id });
           setConfirmCancel(false);
           router.push(backHref);
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmStart}
+        onOpenChange={setConfirmStart}
+        title="Start this trip?"
+        description="This switches the trip to live mode — a manifest and live location sharing become available, and riders will be notified."
+        confirmLabel="Start trip"
+        cancelLabel="Not yet"
+        loading={startTrip.isPending}
+        onConfirm={async () => {
+          await startTrip.mutateAsync(trip.id);
+          setConfirmStart(false);
         }}
       />
     </div>

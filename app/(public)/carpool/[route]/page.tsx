@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import { fetchTrips, fetchTripMetaCities } from '../../../../lib/api/server';
 import { TripsView } from '../../../../components/trips/TripsView';
 import type { TripsResponse, TripMetaCities } from '../../../../lib/api/trips.api';
 import { TrackEvent } from '../../../../components/common/TrackEvent';
+import { parsePageParam, withPageParam } from '../../../../lib/utils/pagination';
 
 interface PageProps {
   params: { route: string };
@@ -38,9 +39,17 @@ function parseRoute(route: string): ParsedRoute | null {
   return null;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const parsed = parseRoute(params.route);
-  if (!parsed) return { title: 'Route Not Found' };
+  // notFound() here (not fallback metadata) catches a malformed route at the
+  // metadata step too, matching the vehicle detail page's fix (see its longer
+  // note — app/(public)/rent-a-car/[city]/[makeModel]/[slug]/page.tsx). This
+  // route has no loading.tsx ancestor, so the page component's own
+  // notFound() below already sets a real 404 on its own; parseRoute is a
+  // pure string function, so re-running it here costs nothing.
+  if (!parsed) notFound();
+  const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
+  const page = parsePageParam(rawPage) ?? 1;
   const { origin, destination } = parsed;
   const originName = toDisplayName(origin);
 
@@ -59,8 +68,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (destination) {
     const destinationName = toDisplayName(destination);
+    const basePath = `/carpool/${origin}-to-${destination}`;
     return {
-      title: `${originName} to ${destinationName} Carpool Rides`,
+      title:
+        page > 1
+          ? `${originName} to ${destinationName} Carpool Rides - Page ${page}`
+          : `${originName} to ${destinationName} Carpool Rides`,
       description: `Find a carpool ride from ${originName} to ${destinationName}. Compare available seats, departure times and prices, or offer your own ride on KerayeGo.`,
       keywords: [
         `${origin} to ${destination} carpool`,
@@ -68,7 +81,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         `carpool ${originName} ${destinationName}`,
         `intercity trip ${originName} to ${destinationName}`,
       ],
-      alternates: { canonical: `/carpool/${origin}-to-${destination}` },
+      alternates: { canonical: withPageParam(basePath, page) },
       openGraph: {
         title: `${originName} to ${destinationName} Carpool Rides`,
         description: `Find a carpool ride from ${originName} to ${destinationName} on KerayeGo.`,
@@ -77,8 +90,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  const basePath = `/carpool/${origin}`;
   return {
-    title: `Carpool Rides from ${originName} — Find a Ride`,
+    title:
+      page > 1
+        ? `Carpool Rides from ${originName} — Find a Ride - Page ${page}`
+        : `Carpool Rides from ${originName} — Find a Ride`,
     description: `Find a carpool ride leaving ${originName} to anywhere in Pakistan. Compare available seats, departure times and prices, or offer your own ride on KerayeGo.`,
     keywords: [
       `carpool ${origin}`,
@@ -86,7 +103,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       `ride share from ${originName}`,
       `${originName} intercity trips`,
     ],
-    alternates: { canonical: `/carpool/${origin}` },
+    alternates: { canonical: withPageParam(basePath, page) },
     openGraph: {
       title: `Carpool Rides from ${originName}`,
       description: `Find a carpool ride leaving ${originName} on KerayeGo.`,
@@ -100,6 +117,24 @@ export default async function CarpoolRoutePage({ params, searchParams }: PagePro
   if (!parsed) notFound();
 
   const { origin, destination } = parsed;
+  const basePath = destination ? `/carpool/${origin}-to-${destination}` : `/carpool/${origin}`;
+
+  const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
+  if (rawPage === '1') {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (key === 'page') continue;
+      if (Array.isArray(value)) {
+        value.forEach((v) => params.append(key, v));
+      } else if (value !== undefined) {
+        params.append(key, value);
+      }
+    }
+    redirect(params.size ? `${basePath}?${params}` : basePath);
+  }
+  const page = parsePageParam(rawPage);
+  if (page === null) notFound();
+
   const originName = toDisplayName(origin);
   const destinationName = destination ? toDisplayName(destination) : null;
 
@@ -113,6 +148,8 @@ export default async function CarpoolRoutePage({ params, searchParams }: PagePro
     fetchTrips(effectiveSearchParams),
     fetchTripMetaCities(),
   ]);
+
+  if (page > 1 && page > (tripsRes?.meta?.totalPages ?? 1)) notFound();
 
   const initialData: TripsResponse | null = tripsRes
     ? { data: tripsRes.data, meta: tripsRes.meta as TripsResponse['meta'] }

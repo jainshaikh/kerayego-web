@@ -1,33 +1,57 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { redirect, notFound } from 'next/navigation';
 import { fetchAllProviders, fetchDistinctCities } from '../../../lib/api/server';
 import { ProvidersView } from '../../../components/providers/ProvidersView';
 import type { ProvidersListResponse } from '../../../lib/api/providers.api';
 import { USER_LOCATION_COOKIE, DEFAULT_NEARBY_RADIUS_KM, parseUserLocation } from '../../../lib/utils/userLocation';
-
-export const metadata: Metadata = {
-  title: 'Verified Car Rental Providers in Pakistan',
-  description:
-    'Browse verified vehicle rental providers across Karachi, Lahore, Islamabad, and other cities in Pakistan. Every provider is reviewed before listing.',
-  keywords: ['car rental companies Pakistan', 'verified car rental providers', 'vehicle hire providers'],
-  alternates: {
-    canonical: '/providers',
-  },
-};
+import { parsePageParam, withPageParam } from '../../../lib/utils/pagination';
 
 interface PageProps {
   searchParams: { page?: string; city?: string };
 }
 
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
+  const page = parsePageParam(rawPage) ?? 1;
+  const title = 'Verified Car Rental Providers in Pakistan';
+
+  return {
+    title: page > 1 ? `${title} - Page ${page}` : title,
+    description:
+      'Browse verified vehicle rental providers across Karachi, Lahore, Islamabad, and other cities in Pakistan. Every provider is reviewed before listing.',
+    keywords: ['car rental companies Pakistan', 'verified car rental providers', 'vehicle hire providers'],
+    alternates: {
+      canonical: withPageParam('/providers', page),
+    },
+  };
+}
+
 export default async function ProvidersPage({ searchParams }: PageProps) {
-  const page = Number(searchParams.page ?? 1);
   const city = searchParams.city;
+
+  if (searchParams.page === '1') {
+    const params = new URLSearchParams();
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (key === 'page' || value === undefined) return;
+      params.set(key, value);
+    });
+    redirect(params.size ? `/providers?${params}` : '/providers');
+  }
+
+  const page = parsePageParam(searchParams.page);
+  if (page === null) notFound();
+
   const location = parseUserLocation(cookies().get(USER_LOCATION_COOKIE)?.value);
 
   const [providersRes, citiesRes] = await Promise.all([
     fetchAllProviders(page, 12, city, location?.lat, location?.lng, location ? DEFAULT_NEARBY_RADIUS_KM : undefined),
     fetchDistinctCities(),
   ]);
+
+  if (page > 1 && page > (providersRes?.meta?.totalPages ?? 1)) {
+    notFound();
+  }
 
   const initialData: ProvidersListResponse | null = providersRes
     ? { data: providersRes.data, meta: providersRes.meta as ProvidersListResponse['meta'] }

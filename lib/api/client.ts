@@ -1,7 +1,11 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
+// Exported so the /ride Socket.IO client (lib/realtime/ride-socket.ts) can
+// derive the gateway's origin from the same source instead of re-reading the
+// env var — see that file's getSocketOrigin() for why the "/v1" suffix here
+// has to be stripped first.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
 
 // In-memory access token — never persisted to localStorage (XSS protection)
 let accessToken: string | null = null;

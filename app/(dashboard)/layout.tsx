@@ -1,9 +1,11 @@
 import { DashboardSidebar } from '../../components/layout/DashboardSidebar';
 import { MobileSidebarBar } from '../../components/layout/MobileSidebarBar';
+import { ActiveRideBanner } from '../../components/layout/ActiveRideBanner';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-page">
+      <ActiveRideBanner basePath="/dashboard" />
       <MobileSidebarBar brand="KerayeGo">
         <DashboardSidebar />
       </MobileSidebarBar>

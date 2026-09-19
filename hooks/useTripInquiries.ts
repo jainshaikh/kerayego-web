@@ -30,6 +30,10 @@ export function useTripInquiry(id: string) {
     queryKey: ['trip-inquiries', id],
     queryFn: () => tripInquiriesApi.getOne(id),
     enabled: !!id,
+    // The /ride socket only broadcasts location, never manifest/status changes
+    // — poll while the trip is live so this tab picks up the driver's own
+    // pickup/dropoff taps without a manual refresh.
+    refetchInterval: (query) => (query.state.data?.trip.status === 'IN_PROGRESS' ? 15_000 : false),
   });
 }
 
@@ -62,6 +66,7 @@ export function useUpdateTripInquiryStatus() {
       tripInquiriesApi.updateStatus(id, data),
     onSuccess: (updated, { data }) => {
       qc.invalidateQueries({ queryKey: ['trip-inquiries'] });
+      qc.invalidateQueries({ queryKey: ['trip-inquiry-inbox'] });
       qc.invalidateQueries({ queryKey: ['trips'] });
       qc.invalidateQueries({ queryKey: ['trip'] });
       qc.setQueryData(['trip-inquiries', updated.id], updated);

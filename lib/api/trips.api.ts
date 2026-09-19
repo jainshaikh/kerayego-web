@@ -1,7 +1,17 @@
 import apiClient from './client';
 import type { ApiResponse, PaginationMeta, Market } from '../../types/api.types';
 
-export type TripStatus = 'PENDING_REVIEW' | 'ACTIVE' | 'REJECTED' | 'CANCELLED' | 'COMPLETED' | 'SUSPENDED';
+export type TripStatus =
+  | 'PENDING_REVIEW'
+  | 'ACTIVE'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'SUSPENDED';
+
+export type TripEventType = 'START' | 'ARRIVED' | 'PICKUP' | 'NO_SHOW' | 'DROPOFF' | 'END';
+export type PickupSource = 'DRIVER_TAP' | 'AUTO_ON_TRIP_END';
 
 export interface TripVehicleImage {
   url: string;
@@ -127,6 +137,63 @@ export type UpdateTripPayload = Partial<CreateTripPayload>;
 
 export type MyTrip = TripDetail;
 
+// ── Day-of-trip execution shapes ─────────────────────────────────────────────
+
+export interface ManifestStopRef {
+  id: string;
+  label: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+export interface ManifestRider {
+  id: string; // tripInquiryId
+  requestedSeats: number;
+  pickupNote: string | null;
+  pickupConfirmedAt: string | null;
+  pickupSource: PickupSource | null;
+  droppedOffAt: string | null;
+  pickupStop: ManifestStopRef | null;
+  dropoffStop: ManifestStopRef | null;
+  user: { id: string; name: string; phone: string | null };
+}
+
+export interface ManifestRouteStop {
+  id: string;
+  type: 'PICKUP' | 'DROPOFF';
+  label: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+export interface TripManifest {
+  trip: TripDetail;
+  riders: ManifestRider[];
+  routeStops: ManifestRouteStop[];
+}
+
+export interface RecordTripEventPayload {
+  id: string; // client-generated idempotency key
+  tripInquiryId?: string;
+  type: TripEventType;
+  occurredAt: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface TripEvent {
+  id: string;
+  tripId: string;
+  tripInquiryId: string | null;
+  type: TripEventType;
+  occurredAt: string;
+  payload: Record<string, unknown> | null;
+}
+
+export type MyActiveRide =
+  | { role: 'driver'; tripId: string }
+  | { role: 'rider'; tripId: string; tripInquiryId: string }
+  | null;
+
 export const tripsApi = {
   // Public search
   getAll: async (filters: TripFilters = {}): Promise<TripsResponse> => {
@@ -179,6 +246,32 @@ export const tripsApi = {
 
   cancel: async (id: string, reason?: string): Promise<MyTrip> => {
     const res = await apiClient.patch<ApiResponse<MyTrip>>(`/my/trips/${id}/cancel`, { reason });
+    return res.data.data;
+  },
+
+  // ── Day-of-trip execution (driver + rider self-service) ──────────────────
+  startTrip: async (id: string): Promise<MyTrip> => {
+    const res = await apiClient.post<ApiResponse<MyTrip>>(`/my/trips/${id}/start`);
+    return res.data.data;
+  },
+
+  getManifest: async (id: string): Promise<TripManifest> => {
+    const res = await apiClient.get<ApiResponse<TripManifest>>(`/my/trips/${id}/manifest`);
+    return res.data.data;
+  },
+
+  recordEvent: async (id: string, data: RecordTripEventPayload): Promise<TripEvent> => {
+    const res = await apiClient.post<ApiResponse<TripEvent>>(`/my/trips/${id}/events`, data);
+    return res.data.data;
+  },
+
+  endTrip: async (id: string): Promise<MyTrip> => {
+    const res = await apiClient.post<ApiResponse<MyTrip>>(`/my/trips/${id}/end`);
+    return res.data.data;
+  },
+
+  getMyActiveRide: async (): Promise<MyActiveRide> => {
+    const res = await apiClient.get<ApiResponse<MyActiveRide>>('/my/active-ride');
     return res.data.data;
   },
 };

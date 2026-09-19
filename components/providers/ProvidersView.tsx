@@ -43,6 +43,13 @@ export function ProvidersView({ initialData, cities, initialLocation }: Provider
     router.push(`${pathname}${params.size ? `?${params}` : ''}`, { scroll: false });
   };
 
+  const hrefForPage = (p: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (p > 1) params.set('page', String(p)); else params.delete('page');
+    const qs = params.toString();
+    return qs ? `${pathname}${qs ? `?${qs}` : ''}` : pathname;
+  };
+
   // "City" and "Near me" are alternative ways to narrow the list, not
   // combinable filters — otherwise picking a city (or "All cities") while a
   // location is still set from an earlier visit silently keeps restricting
@@ -159,7 +166,7 @@ export function ProvidersView({ initialData, cities, initialLocation }: Provider
           </div>
 
           {meta && meta.totalPages > 1 && (
-            <Pagination page={page} totalPages={meta.totalPages} onPageChange={(p) => updateParam('page', p)} className="mt-10" />
+            <Pagination page={page} totalPages={meta.totalPages} hrefForPage={hrefForPage} className="mt-10" />
           )}
         </div>
       )}

@@ -1,14 +1,17 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { fetchProviderBySlug, fetchDistinctCities, fetchAllProviders } from '../../../../lib/api/server';
 import { ProviderVehiclesSection } from '../../../../components/providers/ProviderVehiclesSection';
 import { ProviderCard } from '../../../../components/providers/ProviderCard';
 import { RatingSummaryBadge } from '../../../../components/common/RatingSummaryBadge';
 import { ReviewsList } from '../../../../components/common/ReviewsList';
+import { parsePageParam, withPageParam } from '../../../../lib/utils/pagination';
+import { Pagination } from '../../../../components/ui';
 
 interface PageProps {
   params: { slug: string };
+  searchParams: { page?: string | string[] };
 }
 
 function toDisplayName(value: string): string {
@@ -28,22 +31,27 @@ async function isKnownCity(value: string): Promise<boolean> {
   return cities.some((c) => c.toLowerCase() === value.toLowerCase());
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const slug = decodeURIComponent(params.slug).toLowerCase();
 
   if (await isKnownCity(slug)) {
     const cityName = toDisplayName(slug);
+    const rawPage = Array.isArray(searchParams?.page) ? searchParams.page[0] : searchParams?.page;
+    const page = parsePageParam(rawPage) ?? 1;
     const res = await fetchAllProviders(1, 1, slug);
     const total = res?.meta?.total ?? 0;
     return {
-      title: `Rental Providers in ${cityName} — Verified Companies`,
+      title:
+        page > 1
+          ? `Rental Providers in ${cityName} - Page ${page}`
+          : `Rental Providers in ${cityName} — Verified Companies`,
       description: `Browse verified vehicle rental providers in ${cityName}, Pakistan. Every provider is reviewed before listing.`,
       keywords: [
         `car rental companies ${cityName}`,
         `rental providers ${cityName}`,
         `verified car rental ${cityName}`,
       ],
-      alternates: { canonical: `/providers/${slug}` },
+      alternates: { canonical: withPageParam(`/providers/${slug}`, page) },
       openGraph: {
         title: `Rental Providers in ${cityName}`,
         description: `Verified vehicle rental providers in ${cityName}, Pakistan.`,
@@ -53,7 +61,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const res = await fetchProviderBySlug(params.slug);
-  if (!res?.data) return { title: 'Provider Not Found' };
+  // notFound() here (not fallback metadata) catches a bad slug at the
+  // metadata step too, matching the vehicle detail page's fix (see its longer
+  // note — app/(public)/rent-a-car/[city]/[makeModel]/[slug]/page.tsx). This
+  // route has no loading.tsx ancestor, so the page component's own
+  // notFound() below already sets a real 404 on its own; this fetch is
+  // deduped against that identical call via Next's request memoization, so
+  // adding it here is free.
+  if (!res?.data) notFound();
   const p = res.data;
   const city = p.showrooms?.[0]?.city;
   return {
@@ -77,11 +92,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-async function ProviderCityHubPage({ city }: { city: string }) {
+async function ProviderCityHubPage({ city, page }: { city: string; page: number }) {
   const cityName = toDisplayName(city);
-  const res = await fetchAllProviders(1, 24, city);
+  const res = await fetchAllProviders(page, 24, city);
   const providers = res?.data ?? [];
   const total = res?.meta?.total ?? 0;
+  const totalPages = res?.meta?.totalPages ?? 0;
+
+  if (page > 1 && page > totalPages) notFound();
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -118,11 +136,14 @@ async function ProviderCityHubPage({ city }: { city: string }) {
       </div>
 
       {providers.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {providers.map((p) => (
-            <ProviderCard key={p.id} provider={p} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {providers.map((p) => (
+              <ProviderCard key={p.id} provider={p} />
+            ))}
+          </div>
+          <Pagination page={page} totalPages={totalPages} basePath={`/providers/${city}`} className="mt-10" />
+        </>
       ) : (
         <Link href="/providers" className="text-sm font-semibold text-primary hover:underline">
           Browse all providers
@@ -132,10 +153,14 @@ async function ProviderCityHubPage({ city }: { city: string }) {
   );
 }
 
-export default async function ProviderDetailOrCityPage({ params }: PageProps) {
+export default async function ProviderDetailOrCityPage({ params, searchParams }: PageProps) {
   const slug = decodeURIComponent(params.slug).toLowerCase();
   if (await isKnownCity(slug)) {
-    return <ProviderCityHubPage city={slug} />;
+    const rawPage = Array.isArray(searchParams?.page) ? searchParams.page[0] : searchParams?.page;
+    if (rawPage === '1') redirect(`/providers/${slug}`);
+    const page = parsePageParam(rawPage);
+    if (page === null) notFound();
+    return <ProviderCityHubPage city={slug} page={page} />;
   }
 
   const res = await fetchProviderBySlug(params.slug);

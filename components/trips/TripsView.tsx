@@ -106,6 +106,13 @@ export function TripsView({ initialData, cities, lockedOriginCity, lockedDestina
 
   const clearFilters = () => router.push(pathname, { scroll: false });
 
+  const hrefForPage = (p: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (p > 1) params.set('page', String(p)); else params.delete('page');
+    const qs = params.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  };
+
   const routeHref = (originCity: string, destinationCity: string) =>
     `/carpool/${originCity.toLowerCase()}-to-${destinationCity.toLowerCase()}/`;
 
@@ -223,7 +230,7 @@ export function TripsView({ initialData, cities, lockedOriginCity, lockedDestina
             <Pagination
               page={currentPage}
               totalPages={totalPages}
-              onPageChange={(p) => updateFilter('page', p)}
+              hrefForPage={hrefForPage}
               className="mt-8"
             />
           </>

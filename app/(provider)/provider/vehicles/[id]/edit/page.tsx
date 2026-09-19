@@ -478,7 +478,7 @@ export default function EditVehiclePage() {
 
           {vehicle.status === 'PENDING_REVIEW' && (
             <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600">
-              This listing is under review and cannot be edited. We'll email you once approved.
+              This listing is under review and cannot be edited. We&apos;ll email you once approved.
             </p>
           )}
         </div>

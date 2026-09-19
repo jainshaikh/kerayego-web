@@ -254,6 +254,13 @@ export default async function HomePage() {
             >
               Get started as a provider
             </Link>
+            <p className="mt-4 text-xs text-white/40">
+              Not sure how it works?{' '}
+              <Link href="/guides/how-to-list-your-car-for-rent" className="font-semibold text-white/70 hover:text-white hover:underline">
+                Read the step-by-step guide
+              </Link>
+              .
+            </p>
           </Reveal>
         </div>
       </section>
@@ -265,7 +272,7 @@ export default async function HomePage() {
             <Logo className="h-6" />
           </div>
           <p>&copy; {new Date().getFullYear()} KerayeGo. All rights reserved.</p>
-          <div className="flex gap-5">
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             <Link href="/rent-a-car" className="transition-colors hover:text-brand-700">
               Browse
             </Link>
@@ -277,6 +284,27 @@ export default async function HomePage() {
             </Link>
             <Link href="/rent-a-car/price-index" className="transition-colors hover:text-brand-700">
               Price Index
+            </Link>
+            <Link href="/about" className="transition-colors hover:text-brand-700">
+              About
+            </Link>
+            <Link href="/faq" className="transition-colors hover:text-brand-700">
+              FAQ
+            </Link>
+            <Link href="/guides" className="transition-colors hover:text-brand-700">
+              Guides
+            </Link>
+            <Link href="/safety" className="transition-colors hover:text-brand-700">
+              Safety
+            </Link>
+            <Link href="/contact" className="transition-colors hover:text-brand-700">
+              Contact
+            </Link>
+            <Link href="/privacy" className="transition-colors hover:text-brand-700">
+              Privacy
+            </Link>
+            <Link href="/terms" className="transition-colors hover:text-brand-700">
+              Terms
             </Link>
             <Link href="/login" className="transition-colors hover:text-brand-700">
               Sign in

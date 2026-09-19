@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,9 +28,7 @@ export default function TripInquirePage() {
   const { user, isLoading: authLoading } = useAuth();
   const createInquiry = useCreateTripInquiry();
   const [submitted, setSubmitted] = useState(false);
-  const [selectedPickupStopId, setSelectedPickupStopId] = useState<string | null>(null);
-  const [selectedDropoffStopId, setSelectedDropoffStopId] = useState<string | null>(null);
-  const [useCustomPickup, setUseCustomPickup] = useState(false);
+  const [showPickupNote, setShowPickupNote] = useState(false);
 
   const { data: trip, isLoading: tripLoading } = useQuery({
     queryKey: ['trip', params.id],
@@ -45,12 +43,26 @@ export default function TripInquirePage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateTripInquiryFormValues>({
     resolver: zodResolver(createTripInquirySchema),
-    defaultValues: { tripId: params.id, requestedSeats: 1 },
+    defaultValues: { tripId: params.id, requestedSeats: 1, pickupStopId: '', dropoffStopId: '' },
   });
 
   const requestedSeats = watch('requestedSeats') ?? 1;
+  const selectedPickupStopId = watch('pickupStopId');
+  const selectedDropoffStopId = watch('dropoffStopId');
   const pickupStops = trip?.stops.filter((s) => s.type === 'PICKUP') ?? [];
   const dropoffStops = trip?.stops.filter((s) => s.type === 'DROPOFF') ?? [];
+
+  // Default-select the first pickup/dropoff stop once the trip loads, so the common
+  // single-stop case needs no taps. Runs once per trip id — later manual selections
+  // by the rider are never overwritten since this effect doesn't re-fire.
+  useEffect(() => {
+    if (!trip) return;
+    const firstPickup = trip.stops.find((s) => s.type === 'PICKUP');
+    const firstDropoff = trip.stops.find((s) => s.type === 'DROPOFF');
+    if (firstPickup) setValue('pickupStopId', firstPickup.id);
+    if (firstDropoff) setValue('dropoffStopId', firstDropoff.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip?.id]);
 
   if (!authLoading && !user) {
     router.replace(`/login?redirect=/carpool/${params.route}/${params.id}/inquire`);
@@ -80,23 +92,12 @@ export default function TripInquirePage() {
   const routeSlug = `${trip.originCity.toLowerCase()}-to-${trip.destinationCity.toLowerCase()}`;
 
   const onSubmit = async (values: CreateTripInquiryFormValues) => {
-    const pickupLabel = pickupStops.find((s) => s.id === selectedPickupStopId)?.label;
-    const dropoffLabel = dropoffStops.find((s) => s.id === selectedDropoffStopId)?.label;
-    const pickupText = pickupLabel || (values.pickupNote || '').trim() || undefined;
-
-    let pickupNote: string | undefined;
-    if (pickupText && dropoffLabel) {
-      pickupNote = `Pickup: ${pickupText} · Drop-off: ${dropoffLabel}`;
-    } else if (pickupText) {
-      pickupNote = pickupText;
-    } else if (dropoffLabel) {
-      pickupNote = `Drop-off: ${dropoffLabel}`;
-    }
-
     const result = await createInquiry.mutateAsync({
       tripId: values.tripId,
       requestedSeats: values.requestedSeats,
-      pickupNote,
+      pickupStopId: values.pickupStopId,
+      dropoffStopId: values.dropoffStopId,
+      pickupNote: (values.pickupNote || '').trim() || undefined,
       message: values.message || undefined,
     });
     if (result) setSubmitted(true);
@@ -136,6 +137,20 @@ export default function TripInquirePage() {
     );
   }
 
+  if (pickupStops.length === 0 || dropoffStops.length === 0) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+        <p className="text-slate-600">
+          This trip doesn&apos;t have a {pickupStops.length === 0 ? 'pickup' : 'drop-off'} point set yet —
+          contact {trip.postedBy.name} directly to book a seat.
+        </p>
+        <Link href={`/carpool/${routeSlug}/${params.id}`} className="mt-4 inline-block text-sm text-brand-600 hover:underline">
+          Back to trip
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
       <nav className="mb-5 flex items-center gap-2 text-xs text-text-muted">
@@ -154,7 +169,7 @@ export default function TripInquirePage() {
         <div className="sm:col-span-3">
           <h1 className="mb-1 text-2xl font-bold text-ink">Request seats</h1>
           <p className="mb-6 text-sm text-text-muted">
-            {trip.postedBy.name} will accept or decline — you'll be notified either way.
+            {trip.postedBy.name} will accept or decline — you&apos;ll be notified either way.
           </p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -185,67 +200,47 @@ export default function TripInquirePage() {
               {errors.requestedSeats && <p className="mt-1.5 text-xs text-red-700">{errors.requestedSeats.message}</p>}
             </div>
 
-            {pickupStops.length > 0 ? (
-              <div>
-                <label className="mb-2 block text-[13px] font-semibold text-slate-700">Pickup point</label>
-                <div className="flex flex-wrap gap-2">
-                  {pickupStops.map((stop) => (
-                    <PillToggle
-                      key={stop.id}
-                      active={!useCustomPickup && selectedPickupStopId === stop.id}
-                      onClick={() => {
-                        setUseCustomPickup(false);
-                        setSelectedPickupStopId(stop.id);
-                      }}
-                    >
-                      {stop.label}
-                    </PillToggle>
-                  ))}
+            <div>
+              <label className="mb-2 block text-[13px] font-semibold text-slate-700">Pickup point</label>
+              <div className="flex flex-wrap gap-2">
+                {pickupStops.map((stop) => (
                   <PillToggle
-                    active={useCustomPickup}
-                    onClick={() => {
-                      setUseCustomPickup(true);
-                      setSelectedPickupStopId(null);
-                    }}
+                    key={stop.id}
+                    active={selectedPickupStopId === stop.id}
+                    onClick={() => setValue('pickupStopId', stop.id, { shouldValidate: true })}
                   >
-                    Other
+                    {stop.label}
                   </PillToggle>
-                </div>
-                {useCustomPickup ? (
-                  <Input
-                    className="mt-2"
-                    placeholder="Describe your pickup point"
-                    {...register('pickupNote')}
-                  />
-                ) : null}
+                ))}
+                <PillToggle active={showPickupNote} onClick={() => setShowPickupNote((v) => !v)}>
+                  Add a note
+                </PillToggle>
               </div>
-            ) : (
-              <Input
-                label="Pickup note"
-                helper="Optional — e.g. a landmark near the pickup point"
-                placeholder="e.g. Near the mosque, not the main gate"
-                {...register('pickupNote')}
-              />
-            )}
+              {errors.pickupStopId && <p className="mt-1.5 text-xs text-red-700">{errors.pickupStopId.message}</p>}
+              {showPickupNote ? (
+                <Input
+                  className="mt-2"
+                  placeholder="e.g. Near the mosque, not the main gate"
+                  {...register('pickupNote')}
+                />
+              ) : null}
+            </div>
 
-            {dropoffStops.length > 0 ? (
-              <div>
-                <label className="mb-2 block text-[13px] font-semibold text-slate-700">Drop-off point</label>
-                <div className="flex flex-wrap gap-2">
-                  {dropoffStops.map((stop) => (
-                    <PillToggle
-                      key={stop.id}
-                      active={selectedDropoffStopId === stop.id}
-                      onClick={() =>
-                        setSelectedDropoffStopId((current) => (current === stop.id ? null : stop.id))
-                      }
-                    >
-                      {stop.label}
-                    </PillToggle>
-                  ))}
-                </div>
+            <div>
+              <label className="mb-2 block text-[13px] font-semibold text-slate-700">Drop-off point</label>
+              <div className="flex flex-wrap gap-2">
+                {dropoffStops.map((stop) => (
+                  <PillToggle
+                    key={stop.id}
+                    active={selectedDropoffStopId === stop.id}
+                    onClick={() => setValue('dropoffStopId', stop.id, { shouldValidate: true })}
+                  >
+                    {stop.label}
+                  </PillToggle>
+                ))}
               </div>
-            ) : null}
+              {errors.dropoffStopId && <p className="mt-1.5 text-xs text-red-700">{errors.dropoffStopId.message}</p>}
+            </div>
 
             <Textarea
               label="Message"

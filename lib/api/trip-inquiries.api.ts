@@ -1,7 +1,15 @@
 import apiClient from './client';
 import type { ApiResponse, PaginationMeta } from '../../types/api.types';
+import type { PickupSource, TripStatus } from './trips.api';
 
 export type TripInquiryStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
+
+export interface TripInquiryStopRef {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+}
 
 export interface TripInquiryUser {
   id: string;
@@ -12,6 +20,7 @@ export interface TripInquiryUser {
 
 export interface TripInquiryTrip {
   id: string;
+  status: TripStatus;
   originCity: string;
   destinationCity: string;
   pickupPoint: string;
@@ -41,8 +50,25 @@ export interface TripInquiry {
   rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
+  // Day-of-trip state — driver-authoritative (a rider's own self-report never
+  // sets pickupConfirmedAt; see TripsService.recordEvent on the backend).
+  pickupConfirmedAt: string | null;
+  pickupSource: PickupSource | null;
+  droppedOffAt: string | null;
+  pickupStop: TripInquiryStopRef | null;
+  dropoffStop: TripInquiryStopRef | null;
   user: TripInquiryUser;
   trip: TripInquiryTrip;
+}
+
+export interface ChatMessage {
+  id: string;
+  tripInquiryId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+  deliveredAt: string | null;
+  readAt: string | null;
 }
 
 export interface TripInquiriesResponse {
@@ -53,6 +79,8 @@ export interface TripInquiriesResponse {
 export interface CreateTripInquiryPayload {
   tripId: string;
   requestedSeats: number;
+  pickupStopId: string;
+  dropoffStopId: string;
   pickupNote?: string;
   message?: string;
 }
@@ -96,6 +124,15 @@ export const tripInquiriesApi = {
 
   getInboxCounts: async (): Promise<{ pending: number }> => {
     const res = await apiClient.get<ApiResponse<{ pending: number }>>('/my/trip-inquiries/counts');
+    return res.data.data;
+  },
+
+  // Chat — REST catch-up (history); live delivery is over the /ride socket.
+  getMessages: async (tripInquiryId: string, after?: string): Promise<ChatMessage[]> => {
+    const res = await apiClient.get<ApiResponse<ChatMessage[]>>(
+      `/trip-inquiries/${tripInquiryId}/messages`,
+      { params: after ? { after } : undefined },
+    );
     return res.data.data;
   },
 };

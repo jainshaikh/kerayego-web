@@ -84,6 +84,16 @@ export function VehiclesView({ initialData, makes, cities, initialLocation }: Ve
     ? { ...filters, lat: location.lat, lng: location.lng, radiusKm: DEFAULT_NEARBY_RADIUS_KM }
     : filters;
 
+  const hrefForPage = useCallback(
+    (p: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (p > 1) params.set('page', String(p)); else params.delete('page');
+      const qs = params.toString();
+      return qs ? `${pathname}?${qs}` : pathname;
+    },
+    [pathname, searchParams],
+  );
+
   const updateFilter = useCallback(
     // 'replace' is for text fields committed via DebouncedInput — those land
     // one settled value at a time already, but still shouldn't each add a
@@ -319,12 +329,21 @@ export function VehiclesView({ initialData, makes, cities, initialLocation }: Ve
               ))}
             </div>
 
-            <Pagination
-              page={currentPage}
-              totalPages={totalPages}
-              onPageChange={(p) => (favoritesOnly ? setFavoritesPage(p) : updateFilter('page', p))}
-              className="mt-7"
-            />
+            {favoritesOnly ? (
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                onPageChange={(p) => setFavoritesPage(p)}
+                className="mt-7"
+              />
+            ) : (
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                hrefForPage={hrefForPage}
+                className="mt-7"
+              />
+            )}
           </>
         )}
       </div>

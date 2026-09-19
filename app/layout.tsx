@@ -93,7 +93,7 @@ const websiteJsonLd = {
     '@type': 'SearchAction',
     target: {
       '@type': 'EntryPoint',
-      urlTemplate: `${siteUrl}/vehicles?search={search_term_string}`,
+      urlTemplate: `${siteUrl}/rent-a-car?search={search_term_string}`,
     },
     'query-input': 'required name=search_term_string',
   },

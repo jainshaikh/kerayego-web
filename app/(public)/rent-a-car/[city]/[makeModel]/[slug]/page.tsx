@@ -30,7 +30,18 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const res = await fetchVehicleBySlug(params.slug);
-  if (!res?.data) return { title: 'Vehicle Not Found' };
+  // Calling notFound() here (not returning fallback metadata) so a bad slug
+  // is caught at the metadata step too, not just the page body below — this
+  // route used to also have a sibling loading.tsx, which wraps the page in a
+  // Suspense boundary and starts streaming a 200 shell before the page body's
+  // own notFound() resolves, silently downgrading it to a soft-404 (confirmed
+  // live: a nonexistent slug rendered the not-found UI under a 200 status).
+  // Calling notFound() here in generateMetadata did NOT avoid that on its own
+  // (verified live — still 200) — removing the loading.tsx was the actual
+  // fix (see SEO_ROADMAP.md). Kept here anyway as defense-in-depth: cheap
+  // (deduped against the page component's identical fetch below via Next's
+  // request memoization) and correct per Next's own documented pattern.
+  if (!res?.data) notFound();
 
   const v = res.data;
   const price = Number(v.pricePerDay).toLocaleString();

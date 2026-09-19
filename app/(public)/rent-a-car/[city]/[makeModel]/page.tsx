@@ -1,13 +1,16 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight, MapPin } from 'lucide-react';
 import { fetchListings, fetchDistinctMakes } from '../../../../../lib/api/server';
 import { VehicleCard } from '../../../../../components/listings/VehicleCard';
 import type { ListingVehicleCard } from '../../../../../lib/api/listings.api';
+import { parsePageParam, withPageParam } from '../../../../../lib/utils/pagination';
+import { Pagination } from '../../../../../components/ui';
 
 interface PageProps {
   params: { city: string; makeModel: string };
+  searchParams: { page?: string | string[] };
 }
 
 function toDisplayName(value: string): string {
@@ -43,7 +46,7 @@ function toSlug(make: string, model?: string): string {
   return combined.trim().replace(/\s+/g, '-');
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const city = decodeURIComponent(params.city).toLowerCase();
   const cityName = toDisplayName(city);
   const { make, model } = await splitMakeModel(params.makeModel);
@@ -51,8 +54,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const modelName = model ? toDisplayName(model) : null;
   const vehicleName = modelName ? `${makeName} ${modelName}` : makeName;
 
+  const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
+  const page = parsePageParam(rawPage) ?? 1;
+  const basePath = `/rent-a-car/${encodeURIComponent(city)}/${toSlug(make, model)}`;
+
   return {
-    title: `${vehicleName} for Rent in ${cityName} — Compare Prices`,
+    title:
+      page > 1
+        ? `${vehicleName} for Rent in ${cityName} - Page ${page}`
+        : `${vehicleName} for Rent in ${cityName} — Compare Prices`,
     description: `Find ${vehicleName} vehicles for rent in ${cityName} from verified providers. Compare daily and weekly rates, message the owner directly, and book with no hidden fees.`,
     keywords: [
       `${vehicleName.toLowerCase()} rent ${city}`,
@@ -61,7 +71,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       `${vehicleName} rental ${cityName}`,
     ],
     alternates: {
-      canonical: `/rent-a-car/${encodeURIComponent(city)}/${toSlug(make, model)}`,
+      canonical: withPageParam(basePath, page),
     },
     openGraph: {
       title: `${vehicleName} for Rent in ${cityName}`,
@@ -70,22 +80,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function CityMakeModelCarRentalPage({ params }: PageProps) {
+export default async function CityMakeModelCarRentalPage({ params, searchParams }: PageProps) {
   const city = decodeURIComponent(params.city).toLowerCase();
   const cityName = toDisplayName(city);
   const { make, model } = await splitMakeModel(params.makeModel);
   const makeName = toDisplayName(make);
   const modelName = model ? toDisplayName(model) : null;
   const vehicleName = modelName ? `${makeName} ${modelName}` : makeName;
+  const basePath = `/rent-a-car/${encodeURIComponent(city)}/${toSlug(make, model)}`;
 
-  const listingsRes = await fetchListings({ city, make, ...(model ? { model } : {}), limit: '24' });
+  const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
+  if (rawPage === '1') redirect(basePath);
+  const page = parsePageParam(rawPage);
+  if (page === null) notFound();
+
+  const listingsRes = await fetchListings({ city, make, ...(model ? { model } : {}), limit: '24', page: String(page) });
   const vehicles: ListingVehicleCard[] = listingsRes?.data ?? [];
   const total = listingsRes?.meta?.total ?? 0;
 
   // Real-inventory gate (source: KerayeGo_SEO_Master_Reference.md §13/§68) —
   // zero matching vehicles is exactly the "doorway page" pattern that
-  // reference warns against. Don't render a thin page.
-  if (total === 0) notFound();
+  // reference warns against. Don't render a thin page. For page > 1, an
+  // out-of-range page number is likewise a 404.
+  const totalPages = listingsRes?.meta?.totalPages ?? 0;
+  if (page > 1 ? page > totalPages : total === 0) notFound();
 
   const models = Array.from(new Set(vehicles.map((v) => v.model))).slice(0, 6);
 
@@ -149,6 +167,8 @@ export default async function CityMakeModelCarRentalPage({ params }: PageProps) 
           <VehicleCard key={vehicle.id} vehicle={vehicle} />
         ))}
       </div>
+
+      <Pagination page={page} totalPages={totalPages} basePath={basePath} className="mt-8" />
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link

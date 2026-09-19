@@ -1,9 +1,11 @@
 import { ProviderSidebar } from '../../components/provider/ProviderSidebar';
 import { MobileSidebarBar } from '../../components/layout/MobileSidebarBar';
+import { ActiveRideBanner } from '../../components/layout/ActiveRideBanner';
 
 export default function ProviderLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-page">
+      <ActiveRideBanner basePath="/provider" />
       <MobileSidebarBar brand="KerayeGo Provider">
         <ProviderSidebar />
       </MobileSidebarBar>

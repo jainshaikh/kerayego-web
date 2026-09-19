@@ -17,7 +17,10 @@ export const tripSchema = z.object({
   originCity: z.string().min(2, 'Origin city is required').max(100),
   destinationCity: z.string().min(2, 'Destination city is required').max(100),
   pickupStops: z.array(tripStopSchema).min(1, 'Add at least one pickup point').max(10),
-  dropoffStops: z.array(tripStopSchema).max(10),
+  // A rider's seat request must reference a real pickup AND dropoff TripStop id
+  // (backend requires both) — a trip posted with zero dropoff stops would be
+  // permanently unbookable, so this is enforced here too, not just pickup.
+  dropoffStops: z.array(tripStopSchema).min(1, 'Add at least one drop-off point').max(10),
   departureAt: z
     .string()
     .min(1, 'Select a departure date & time')

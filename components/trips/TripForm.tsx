@@ -128,7 +128,7 @@ export function TripForm({ cancelHref, detailBasePath, addVehicleHref }: TripFor
     formState: { errors, isSubmitting },
   } = useForm<TripFormValues>({
     resolver: zodResolver(tripSchema),
-    defaultValues: { availableSeats: 3, pickupStops: [{ label: '' }], dropoffStops: [] },
+    defaultValues: { availableSeats: 3, pickupStops: [{ label: '' }], dropoffStops: [{ label: '' }] },
   });
 
   // A vehicle owner's registered vehicles could in principle span markets, so
@@ -250,9 +250,14 @@ export function TripForm({ cancelHref, detailBasePath, addVehicleHref }: TripFor
             setValue={setValue}
             errors={errors}
             label="Drop-off point"
-            addLabel="Add a drop-off point"
+            addLabel="Add another drop-off point"
             placeholder="e.g. Karachi Cantt Station"
+            required
+            minRows={1}
           />
+          {errors.dropoffStops?.message && (
+            <p className="text-[13px] text-red-700">{errors.dropoffStops.message}</p>
+          )}
 
           <Input
             type="datetime-local"
