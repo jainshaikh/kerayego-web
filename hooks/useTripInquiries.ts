@@ -17,13 +17,6 @@ export function useMyTripInquiries(page = 1, limit = 20) {
   });
 }
 
-export function useMyTripInquiryCounts() {
-  return useQuery({
-    queryKey: ['trip-inquiries', 'counts'],
-    queryFn: tripInquiriesApi.getMyCounts,
-    staleTime: 60_000,
-  });
-}
 
 export function useTripInquiry(id: string) {
   return useQuery({
@@ -89,10 +82,3 @@ export function useTripInquiryInbox(params?: { tripId?: string; status?: TripInq
   });
 }
 
-export function useTripInquiryInboxCounts() {
-  return useQuery({
-    queryKey: ['trip-inquiry-inbox', 'counts'],
-    queryFn: tripInquiriesApi.getInboxCounts,
-    staleTime: 30_000,
-  });
-}

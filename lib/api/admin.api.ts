@@ -238,10 +238,6 @@ export const adminApi = {
         params: { page, limit, ...(status && { status }), ...(search && { search }) },
       })
       .then((r) => r.data),
-  getPendingVehicles: (page = 1, limit = 20) =>
-    apiClient
-      .get<PagedResponse<AdminVehicleSummary>>('/admin/vehicles/pending', { params: { page, limit } })
-      .then((r) => r.data),
   getVehicleDetail: (id: string) =>
     apiClient.get<ApiResponse<AdminVehicleDetail>>(`/admin/vehicles/${id}`).then((r) => r.data.data),
   approveVehicle: (id: string, note?: string) =>

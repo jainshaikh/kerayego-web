@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import {
   tripsApi,
   type CreateTripPayload,
-  type UpdateTripPayload,
   type RecordTripEventPayload,
 } from '../lib/api/trips.api';
 import { trackEvent } from '../lib/utils/analytics';
@@ -47,17 +46,6 @@ export function useCreateTrip() {
   });
 }
 
-export function useUpdateTrip(tripId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: UpdateTripPayload) => tripsApi.update(tripId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trips', 'my'] });
-      toast.success('Trip updated');
-    },
-    onError: (error: unknown) => toast.error(errorMessage(error, 'Failed to update trip')),
-  });
-}
 
 export function useCancelTrip() {
   const queryClient = useQueryClient();

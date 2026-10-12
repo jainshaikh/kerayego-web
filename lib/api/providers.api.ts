@@ -119,10 +119,7 @@ export const providersApi = {
     return res.data;
   },
 
-  getPublicProfile: async (slug: string) => {
-    const res = await apiClient.get<ApiResponse<ProviderProfile>>(`/providers/${slug}`);
-    return res.data;
-  },
+
 
   // Showrooms
   createShowroom: async (data: CreateShowroomPayload) => {
@@ -130,10 +127,7 @@ export const providersApi = {
     return res.data;
   },
 
-  getShowrooms: async () => {
-    const res = await apiClient.get<ApiResponse<Showroom[]>>('/providers/me/showrooms');
-    return res.data;
-  },
+
 
   updateShowroom: async (showroomId: string, data: Partial<CreateShowroomPayload>) => {
     const res = await apiClient.patch<ApiResponse<Showroom>>(
@@ -162,8 +156,5 @@ export const providersApi = {
     return { data: res.data.data, meta: res.data.meta as PaginationMeta };
   },
 
-  getPublicBySlug: async (slug: string): Promise<PublicProviderDetail> => {
-    const res = await apiClient.get<ApiResponse<PublicProviderDetail>>(`/providers/${slug}`);
-    return res.data.data;
-  },
+
 };

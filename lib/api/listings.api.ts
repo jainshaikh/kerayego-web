@@ -123,11 +123,4 @@ export const listingsApi = {
     const res = await apiClient.get<ApiResponse<ListingVehicleDetail>>(`/listings/${slug}`);
     return res.data.data;
   },
-
-  getFeatured: async (limit = 8): Promise<ListingVehicleCard[]> => {
-    const res = await apiClient.get<ApiResponse<ListingVehicleCard[]>>('/listings/featured', {
-      params: { limit },
-    });
-    return res.data.data;
-  },
 };

@@ -66,13 +66,6 @@ export function useAdminAllVehicles(page = 1, status?: string, search?: string) 
   });
 }
 
-export function usePendingVehicles(page = 1) {
-  return useQuery({
-    queryKey: ['admin', 'vehicles', 'pending', page],
-    queryFn: () => adminApi.getPendingVehicles(page),
-    staleTime: 30_000,
-  });
-}
 
 export function useAdminVehicleDetail(id: string) {
   return useQuery({
@@ -302,5 +295,6 @@ export function useUpsertSetting() {
       description?: string;
     }) => adminApi.upsertSetting(key, value, description),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'settings'] }),
+    onError: (error: Error) => toast.error(error?.message || 'Failed to save setting'),
   });
 }

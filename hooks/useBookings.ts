@@ -76,10 +76,3 @@ export function useProviderInquiries(status?: BookingStatus, page = 1, limit = 2
   });
 }
 
-export function useProviderInquiryCounts() {
-  return useQuery({
-    queryKey: ['provider-inquiries', 'counts'],
-    queryFn: bookingsApi.getProviderCounts,
-    staleTime: 30_000,
-  });
-}
