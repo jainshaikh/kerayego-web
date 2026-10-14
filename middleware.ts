@@ -15,6 +15,22 @@ const ROLE_ROUTES: Record<string, string[]> = {
   SUPER_ADMIN: ['/admin'],
 };
 
+// Sections that exist under both /dashboard and /provider and render the same
+// shared component (carpool is open to both roles). A link to one role's copy
+// — e.g. the public "Post your trip" CTA pointing at /dashboard/trips/new —
+// lands the other role on its own copy instead of bouncing to its dashboard.
+// `inquiries` is deliberately absent: the two pages share a name, not content.
+const SHARED_ROLE_SECTIONS = ['trips', 'trip-inquiries', 'my-vehicles', 'incoming-requests', 'reviews'];
+
+function sharedSectionTarget(pathname: string, userRole: string): string | null {
+  const [from, to] =
+    userRole === 'PROVIDER' ? ['/dashboard/', '/provider/'] : userRole === 'USER' ? ['/provider/', '/dashboard/'] : [];
+  if (!from || !to || !pathname.startsWith(from)) return null;
+  const rest = pathname.slice(from.length);
+  const section = rest.split('/')[0];
+  return SHARED_ROLE_SECTIONS.includes(section) ? `${to}${rest}` : null;
+}
+
 const ROLE_DASHBOARDS: Record<string, string> = {
   USER: '/dashboard',
   PROVIDER: '/provider/dashboard',
@@ -77,6 +93,12 @@ export function middleware(request: NextRequest) {
       const isAllowed = allowedPrefixes.some((prefix) => pathname.startsWith(prefix));
 
       if (!isAllowed) {
+        const sharedTarget = sharedSectionTarget(pathname, userRole);
+        if (sharedTarget) {
+          const url = new URL(sharedTarget, request.url);
+          url.search = request.nextUrl.search;
+          return NextResponse.redirect(url);
+        }
         // User is authenticated but accessing wrong role's area → redirect to their dashboard
         const correctDashboard = ROLE_DASHBOARDS[userRole] || '/dashboard';
         return NextResponse.redirect(new URL(correctDashboard, request.url));

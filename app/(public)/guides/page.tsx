@@ -41,6 +41,18 @@ const GUIDES: { title: string; description: string; href: string }[] = [
     href: '/guides/how-to-list-your-car-for-rent',
   },
   {
+    title: 'How Carpooling Works in Pakistan',
+    description:
+      'Find a driver going your way, request a seat, pick your pickup point, and split the cost of an intercity trip.',
+    href: '/guides/how-carpooling-works',
+  },
+  {
+    title: 'How to Offer a Ride',
+    description:
+      'Register your car, post a carpool trip, handle seat requests and share the cost of your journey.',
+    href: '/guides/how-to-offer-a-ride',
+  },
+  {
     title: 'Carpool Safety in Pakistan',
     description:
       'What KerayeGo verifies before a personal vehicle can be used for carpooling, and how to stay safe on a shared ride.',

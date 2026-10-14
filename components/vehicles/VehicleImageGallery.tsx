@@ -6,15 +6,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, X } from 'lucide-react';
 import { cn } from '../../lib/utils/cn';
 import type { ListingVehicleDetail } from '../../lib/api/listings.api';
+import { vehicleImageAlt } from '../../lib/utils/copy';
 
 interface VehicleImageGalleryProps {
   images: ListingVehicleDetail['images'];
   title: string;
+  /** Used in the fallback alt text ("… for rent in Multan, photo 2") when a photo has none. */
+  city?: string | null;
 }
 
 /** Public-facing image slider + lightbox for the vehicle detail page.
  * (Not to be confused with VehicleImageManager, the provider-side upload/reorder grid.) */
-export function VehicleImageGallery({ images, title }: VehicleImageGalleryProps) {
+export function VehicleImageGallery({ images, title, city }: VehicleImageGalleryProps) {
   const [index, setIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -63,7 +66,7 @@ export function VehicleImageGallery({ images, title }: VehicleImageGalleryProps)
             <motion.img
               key={active.id}
               src={active.url}
-              alt={active.altText ?? `${title} photo ${index + 1}`}
+              alt={active.altText ?? vehicleImageAlt(title, city, index + 1)}
               className="h-full w-full cursor-zoom-in object-cover"
               custom={direction}
               initial={{ opacity: 0, x: direction >= 0 ? 40 : -40 }}
@@ -104,7 +107,7 @@ export function VehicleImageGallery({ images, title }: VehicleImageGalleryProps)
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img.url}
-                alt={img.altText ?? `${title} thumbnail ${idx + 1}`}
+                alt={img.altText ?? vehicleImageAlt(title, city, idx + 1)}
                 className="h-full w-full object-cover"
               />
             </button>
@@ -138,7 +141,7 @@ export function VehicleImageGallery({ images, title }: VehicleImageGalleryProps)
                 <motion.img
                   key={active.id}
                   src={active.url}
-                  alt={active.altText ?? `${title} photo ${index + 1}`}
+                  alt={active.altText ?? vehicleImageAlt(title, city, index + 1)}
                   className="absolute inset-0 h-full w-full object-contain"
                   custom={direction}
                   initial={{ opacity: 0, x: direction >= 0 ? 60 : -60 }}

@@ -31,7 +31,7 @@ export function PublicNavbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border-subtle bg-page backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-[68px] items-center justify-between gap-6">
+        <div className="flex h-[68px] items-center justify-between gap-3 sm:gap-6">
           {/* Mobile menu trigger — only below the sm breakpoint, where the nav links hide */}
           <button
             type="button"
@@ -80,15 +80,16 @@ export function PublicNavbar() {
               </Link>
             ) : (
               <>
+                {/* Below sm, Sign in lives in the slide-in menu so Register isn't clipped at 375px. */}
                 <Link
                   href="/login"
-                  className="inline-flex h-[38px] items-center rounded-control px-3.5 text-sm font-medium text-text-muted transition-colors hover:bg-surface-hover hover:text-ink"
+                  className="hidden h-[38px] items-center whitespace-nowrap rounded-control px-3.5 text-sm font-medium text-text-muted transition-colors hover:bg-surface-hover hover:text-ink sm:inline-flex"
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex h-[38px] items-center rounded-control bg-brand px-5 text-sm font-semibold text-white shadow-coral transition-all duration-200 ease-spring hover:-translate-y-0.5 hover:shadow-coral-lg active:translate-y-0 active:scale-[0.98]"
+                  className="inline-flex h-[38px] items-center whitespace-nowrap rounded-control bg-brand px-4 text-sm font-semibold text-white shadow-coral transition-all duration-200 ease-spring hover:-translate-y-0.5 hover:shadow-coral-lg active:translate-y-0 active:scale-[0.98] sm:px-5"
                 >
                   Register
                 </Link>

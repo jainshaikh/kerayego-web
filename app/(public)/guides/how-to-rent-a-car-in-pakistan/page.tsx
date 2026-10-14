@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import { GuideByline } from '../../../../components/common/GuideByline';
 
 export const metadata: Metadata = {
   title: 'How to Rent a Car in Pakistan',
@@ -60,11 +61,26 @@ export default function HowToRentACarInPakistanGuidePage() {
         <h1 className="text-[26px] font-bold tracking-tight text-ink">
           How to Rent a Car in Pakistan
         </h1>
+        <GuideByline
+          title="How to Rent a Car in Pakistan"
+          path="/guides/how-to-rent-a-car-in-pakistan"
+          published="2026-09-19"
+          updated="2026-10-14"
+        />
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
           This guide walks through renting a car on KerayeGo from start to finish — browsing
           listings, sending a booking request, and what happens next.
         </p>
       </div>
+
+      <section className="mb-8 rounded-xl border border-border-subtle bg-surface p-4">
+        <h2 className="mb-1.5 text-base font-semibold text-ink">Every car comes with a driver</h2>
+        <p className="text-sm leading-relaxed text-text-muted">
+          All cars on KerayeGo are rented with a driver provided by the rental company. KerayeGo
+          doesn&rsquo;t offer self-drive rentals, so you won&rsquo;t be asked to drive the car
+          yourself.
+        </p>
+      </section>
 
       <section className="mb-8">
         <h2 className="mb-2 text-base font-semibold text-ink">1. Browse vehicles</h2>
@@ -104,9 +120,10 @@ export default function HowToRentACarInPakistanGuidePage() {
         <h2 className="mb-2 text-base font-semibold text-ink">4. Hear back from the provider</h2>
         <p className="text-sm leading-relaxed text-text-muted">
           The provider will get in touch — usually over WhatsApp, since every listing has a direct
-          WhatsApp button — to confirm pickup, exact dates, and payment. Payment is arranged
-          directly between you and the provider; KerayeGo doesn&rsquo;t process payments on the
-          platform.
+          WhatsApp button — to confirm pickup, exact dates, and payment. They&rsquo;ll ask for the
+          documents they need, for example your CNIC, and confirm your booking once they&rsquo;ve
+          checked them. Payment is arranged directly between you and the provider; KerayeGo
+          doesn&rsquo;t process payments on the platform.
         </p>
       </section>
 

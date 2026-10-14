@@ -195,7 +195,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
         {/* Left column — images + details */}
         <div className="space-y-6 lg:col-span-2">
           {/* Image gallery */}
-          <VehicleImageGallery images={vehicle.images} title={vehicle.title} />
+          <VehicleImageGallery images={vehicle.images} title={vehicle.title} city={vehicle.showroom?.city} />
 
           {/* Title + quick specs */}
           <div>
@@ -356,6 +356,10 @@ export default async function VehicleDetailPage({ params }: PageProps) {
 
                 <p className="text-center text-xs text-text-faint">
                   Free to inquire · No payment yet
+                </p>
+                {/* Company policy, not a per-car field: every rental is with the provider's driver. */}
+                <p className="text-center text-xs text-text-faint">
+                  Comes with the provider&rsquo;s driver · No self-drive
                 </p>
               </div>
 

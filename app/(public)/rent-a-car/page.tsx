@@ -3,7 +3,8 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect, notFound } from 'next/navigation';
-import { fetchListings, fetchDistinctMakes, fetchDistinctCities } from '../../../lib/api/server';
+import { fetchListings, fetchDistinctMakes, fetchDistinctCities, fetchPriceIndex } from '../../../lib/api/server';
+import { cityLabel, countWord, formatPKR } from '../../../lib/utils/copy';
 import { VehiclesView } from '../../../components/listings/VehiclesView';
 import type { ListingsResponse } from '../../../lib/api/listings.api';
 import { USER_LOCATION_COOKIE, DEFAULT_NEARBY_RADIUS_KM, parseUserLocation } from '../../../lib/utils/userLocation';
@@ -60,10 +61,11 @@ export default async function RentACarPage({ searchParams }: PageProps) {
     : searchParams;
 
   // Parallel server-side data fetch
-  const [listingsRes, makesRes, citiesRes] = await Promise.all([
+  const [listingsRes, makesRes, citiesRes, priceIndexRes] = await Promise.all([
     fetchListings(effectiveSearchParams),
     fetchDistinctMakes(),
     fetchDistinctCities(),
+    fetchPriceIndex(),
   ]);
 
   if (page > 1 && page > (listingsRes?.meta?.totalPages ?? 1)) {
@@ -76,6 +78,7 @@ export default async function RentACarPage({ searchParams }: PageProps) {
 
   const makes = makesRes?.data ?? [];
   const cities = citiesRes?.data ?? [];
+  const overallPricing = priceIndexRes?.data?.overall ?? null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -112,6 +115,58 @@ export default async function RentACarPage({ searchParams }: PageProps) {
           initialLocation={location}
         />
       </Suspense>
+
+      {/* Page 1 only — answers the broad "rent a car" / "car rental" / "near me"
+          searches this hub ranks for, using live data, without repeating on
+          every ?page=N. */}
+      {page === 1 && cities.length > 0 && (
+        <section className="mt-14 border-t border-border-subtle pt-8">
+          <h2 className="text-sm font-semibold text-ink">Car rental in Pakistan</h2>
+          <div className="mt-3 max-w-3xl space-y-3 text-sm leading-relaxed text-text-muted">
+            <p>
+              KerayeGo brings together cars for rent from verified local providers in{' '}
+              {countWord(cities.length)} cities across Pakistan, so you can compare models and daily
+              prices in one place instead of calling round showrooms.
+              {overallPricing &&
+                ` Right now, half of the ${overallPricing.count.toLocaleString()} cars listed cost ${formatPKR(overallPricing.medianPrice)} a day or less.`}{' '}
+              <Link href="/rent-a-car/price-index" className="font-semibold text-brand-700 hover:underline">
+                See prices by city and make
+              </Link>
+              .
+            </p>
+            <p>
+              Looking for a car near you? Tap the location button in the search box above, or search
+              by area, and you&rsquo;ll see cars listed within {DEFAULT_NEARBY_RADIUS_KM} km. Or go
+              straight to your city:
+            </p>
+            <div className="flex flex-wrap gap-2.5">
+              {cities.map((c) => (
+                <Link
+                  key={c}
+                  href={`/rent-a-car/${encodeURIComponent(c)}`}
+                  className="inline-flex h-9 items-center rounded-control border border-border-subtle bg-page px-3.5 text-sm font-medium text-ink transition-colors hover:border-brand-600 hover:text-brand-700"
+                >
+                  Rent a car in {cityLabel(c)}
+                </Link>
+              ))}
+            </div>
+            <p>
+              Every car comes with the provider&rsquo;s own driver; KerayeGo doesn&rsquo;t offer
+              self-drive. Booking is free: send a request from the car&rsquo;s listing and the
+              provider gets in touch to confirm pickup, dates and payment with you directly, after
+              checking the documents they need, such as your CNIC. Nothing is paid online.
+              New to it? Read{' '}
+              <Link
+                href="/guides/how-to-rent-a-car-in-pakistan"
+                className="font-semibold text-brand-700 hover:underline"
+              >
+                how to rent a car in Pakistan
+              </Link>
+              .
+            </p>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

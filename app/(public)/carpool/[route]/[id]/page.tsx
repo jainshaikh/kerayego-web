@@ -314,7 +314,7 @@ export default async function TripDetailPage({ params }: PageProps) {
                   label="WhatsApp the driver"
                 />
                 <p className="mt-2.5 text-center text-xs text-text-faint">
-                  The driver accepts or declines your request — you&apos;ll be notified either way
+                  The driver accepts or declines your request. Your seats are held only once accepted.
                 </p>
               </div>
 

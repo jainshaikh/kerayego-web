@@ -111,8 +111,9 @@ export default function TripInquirePage() {
         </div>
         <h1 className="mb-2 text-2xl font-bold text-ink">Request sent!</h1>
         <p className="mb-6 text-text-muted">
-          <strong className="font-semibold text-ink">{trip.postedBy.name}</strong> has been notified and will accept
-          or decline your request soon.
+          <strong className="font-semibold text-ink">{trip.postedBy.name}</strong> will accept or decline your
+          request. Check My requests for their answer. If it isn&apos;t answered, it expires after 24 hours
+          or two hours before departure, whichever comes first.
         </p>
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <Link href="/dashboard/trip-inquiries">
@@ -169,7 +170,7 @@ export default function TripInquirePage() {
         <div className="sm:col-span-3">
           <h1 className="mb-1 text-2xl font-bold text-ink">Request seats</h1>
           <p className="mb-6 text-sm text-text-muted">
-            {trip.postedBy.name} will accept or decline — you&apos;ll be notified either way.
+            {trip.postedBy.name} will accept or decline. You&apos;ll find their answer under My requests.
           </p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

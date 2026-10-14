@@ -8,6 +8,7 @@ import { cn } from '../../lib/utils/cn';
 import type { ListingVehicleCard } from '../../lib/api/listings.api';
 import { getCurrencyCode } from '../../lib/utils/currency';
 import { getVehicleUrl } from '../../lib/utils/vehicleUrl';
+import { vehicleImageAlt } from '../../lib/utils/copy';
 import { Avatar } from '../ui';
 import { SaveButton } from './SaveButton';
 
@@ -46,7 +47,7 @@ export function VehicleCard({ vehicle, className }: VehicleCardProps) {
         {cover ? (
           <Image
             src={cover.url}
-            alt={cover.altText ?? vehicle.title}
+            alt={cover.altText ?? vehicleImageAlt(vehicle.title, vehicle.showroom?.city)}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="ease-smooth object-cover transition-transform duration-500 group-hover:scale-[1.07]"

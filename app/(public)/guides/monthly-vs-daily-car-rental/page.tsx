@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import { GuideByline } from '../../../../components/common/GuideByline';
 
 export const metadata: Metadata = {
   title: 'Monthly vs. Daily Car Rental in Pakistan',
@@ -61,6 +62,12 @@ export default function MonthlyVsDailyCarRentalGuidePage() {
         <h1 className="text-[26px] font-bold tracking-tight text-ink">
           Monthly vs. Daily Car Rental in Pakistan
         </h1>
+        <GuideByline
+          title="Monthly vs. Daily Car Rental in Pakistan"
+          path="/guides/monthly-vs-daily-car-rental"
+          published="2026-09-19"
+          updated="2026-09-19"
+        />
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
           On KerayeGo, a provider can price a vehicle by the day, week, or month — and sometimes
           by the 6- or 12-hour block for shorter trips. Renting for longer often works out

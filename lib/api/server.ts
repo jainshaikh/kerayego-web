@@ -116,6 +116,22 @@ export async function fetchPriceIndex() {
   });
 }
 
+// One stored snapshot per calendar month (Asia/Karachi), oldest first, at most
+// 24. A month only exists once the backend's daily snapshot job has run in it;
+// past months freeze at their last day's figures.
+export interface PriceIndexHistoryEntry {
+  month: string; // "YYYY-MM"
+  generatedAt: string;
+  overall: PriceIndexBucket;
+  byCity: (PriceIndexBucket & { city: string })[];
+}
+
+export async function fetchPriceIndexHistory() {
+  return serverFetch<{ success: boolean; data: PriceIndexHistoryEntry[] }>('/listings/meta/price-index/history', {
+    revalidate: 3600,
+  });
+}
+
 export interface ServerProvidersResponse {
   success: boolean;
   data: import('./providers.api').PublicProviderCard[];

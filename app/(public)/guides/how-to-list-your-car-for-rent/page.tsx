@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Building2, FileText, Clock, Car, CheckCircle2, MessageSquare, ChevronRight } from 'lucide-react';
+import { GuideByline } from '../../../../components/common/GuideByline';
 
 export const metadata: Metadata = {
   title: 'How to List Your Car for Rent',
@@ -68,7 +69,9 @@ const STEPS = [
     body: (
       <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
         Once approved, add a vehicle with photos and pricing — day, week, month, whichever you
-        want to offer. See our companion guide on{' '}
+        want to offer. Cars on KerayeGo are rented out with your own driver only; KerayeGo
+        doesn&rsquo;t offer self-drive and never asks you to hand a car over for one. See our
+        companion guide on{' '}
         <Link
           href="/guides/monthly-vs-daily-car-rental"
           className="font-semibold text-brand-700 hover:underline"
@@ -94,8 +97,9 @@ const STEPS = [
     heading: '6. Respond to booking requests',
     body: (
       <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
-        Renters send you free booking requests. You get in touch to confirm pickup, dates, and
-        payment directly with them.
+        Renters send you free booking requests. You get in touch to agree pickup, dates, and
+        payment directly with them. Before you confirm, check every document you need from the
+        customer, such as their CNIC, and only confirm once you&rsquo;re satisfied.
       </p>
     ),
   },
@@ -140,6 +144,12 @@ export default function HowToListYourCarForRentPage() {
         <h1 className="text-[26px] font-bold tracking-tight text-ink">
           How to List Your Car for Rent on KerayeGo
         </h1>
+        <GuideByline
+          title="How to List Your Car for Rent on KerayeGo"
+          path="/guides/how-to-list-your-car-for-rent"
+          published="2026-09-19"
+          updated="2026-10-14"
+        />
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
           KerayeGo lets you list your own vehicle for rent as a provider. Here&rsquo;s the real
           process, from creating an account to your first live listing.

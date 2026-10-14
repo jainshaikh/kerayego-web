@@ -44,6 +44,17 @@ const nextConfig = {
 
   async redirects() {
     return [
+      // The original Vercel production alias still serves the full site with
+      // a 200. Canonicals already point at www.kerayego.com, but a permanent
+      // redirect is the unambiguous signal and stops it showing in search.
+      // Exact host only — preview deployments (other *.vercel.app hosts) keep
+      // working. Query strings are carried over automatically.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'rentalmarket.vercel.app' }],
+        destination: 'https://www.kerayego.com/:path*',
+        statusCode: 301,
+      },
       {
         source: '/provider',
         destination: '/provider/dashboard',

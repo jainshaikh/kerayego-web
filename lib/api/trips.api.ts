@@ -10,7 +10,8 @@ export type TripStatus =
   | 'COMPLETED'
   | 'SUSPENDED';
 
-export type TripEventType = 'START' | 'ARRIVED' | 'PICKUP' | 'NO_SHOW' | 'DROPOFF' | 'END';
+// DEPARTED (the mobile driver's "Start next leg") is never sent from web.
+export type TripEventType = 'START' | 'ARRIVED' | 'PICKUP' | 'NO_SHOW' | 'DROPOFF' | 'END' | 'DEPARTED';
 export type PickupSource = 'DRIVER_TAP' | 'AUTO_ON_TRIP_END';
 
 export interface TripVehicleImage {

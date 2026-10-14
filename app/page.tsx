@@ -16,6 +16,7 @@ import { HeroStats, type HeroStat } from '../components/home/HeroStats';
 import { HeroCollage } from '../components/home/HeroCollage';
 import { Reveal } from '../components/common/Reveal';
 import { Logo } from '../components/common/Logo';
+import { AppDownloadButtons } from '../components/common/AppDownloadButtons';
 import { USER_LOCATION_COOKIE, DEFAULT_NEARBY_RADIUS_KM, parseUserLocation } from '../lib/utils/userLocation';
 
 export const metadata: Metadata = {
@@ -311,6 +312,7 @@ export default async function HomePage() {
             </Link>
           </div>
         </div>
+        <AppDownloadButtons variant="links" className="px-4 pb-8 text-xs text-text-faint" />
       </footer>
     </div>
   );

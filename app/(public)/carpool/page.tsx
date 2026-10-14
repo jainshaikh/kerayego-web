@@ -53,11 +53,19 @@ export default async function CarpoolPage() {
           Share a ride between cities — connect directly, no fees.
         </p>
         <p className="mt-2 text-xs text-text-faint">
-          First time carpooling?{' '}
-          <Link href="/guides/carpool-safety-pakistan" className="font-semibold text-brand-700 hover:underline">
-            Read our safety guide
+          First time carpooling? See{' '}
+          <Link href="/guides/how-carpooling-works" className="font-semibold text-brand-700 hover:underline">
+            how it works
           </Link>
-          .
+          , read our{' '}
+          <Link href="/guides/carpool-safety-pakistan" className="font-semibold text-brand-700 hover:underline">
+            safety guide
+          </Link>
+          , or{' '}
+          <Link href="/guides/how-to-offer-a-ride" className="font-semibold text-brand-700 hover:underline">
+            offer a ride
+          </Link>{' '}
+          of your own.
         </p>
       </div>
 

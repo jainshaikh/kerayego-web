@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { fetchPriceIndex } from '../../../../lib/api/server';
+import { fetchPriceIndex, fetchPriceIndexHistory } from '../../../../lib/api/server';
+import { cn } from '../../../../lib/utils/cn';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.kerayego.com';
+const CC_BY_URL = 'https://creativecommons.org/licenses/by/4.0/';
 
 export const metadata: Metadata = {
   title: 'Pakistan Car Rental Price Index — Real Daily Rates by City',
@@ -33,9 +37,20 @@ function formatPKR(amount: number): string {
   return `PKR ${amount.toLocaleString('en-PK')}`;
 }
 
+function formatMonth(month: string): string {
+  return new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-PK', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 export default async function PriceIndexPage() {
-  const res = await fetchPriceIndex();
+  const [res, historyRes] = await Promise.all([fetchPriceIndex(), fetchPriceIndexHistory()]);
   const data = res?.data;
+  // null when the endpoint isn't available (e.g. before the snapshots
+  // migration is deployed) — the history section then simply doesn't render.
+  const history = historyRes?.data ?? null;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -48,6 +63,34 @@ export default async function PriceIndexPage() {
   };
 
   const generatedAt = data?.generatedAt ? new Date(data.generatedAt) : null;
+  const monthLabel = (generatedAt ?? new Date()).toLocaleDateString('en-PK', { month: 'long', year: 'numeric' });
+
+  // Dataset markup so the index can surface in Google Dataset Search and is
+  // easy to cite. Licence covers the aggregate figures on this page only (not
+  // listings or photos) — chosen to encourage attributed reuse and links.
+  const datasetJsonLd = data?.overall
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'Dataset',
+        name: 'Pakistan Car Rental Price Index',
+        description:
+          'Median, average, lowest and highest daily car rental prices in Pakistan by city and vehicle make, computed from approved rental listings on KerayeGo.',
+        url: `${SITE_URL}/rent-a-car/price-index`,
+        license: CC_BY_URL,
+        isAccessibleForFree: true,
+        creator: { '@type': 'Organization', name: 'KerayeGo', url: SITE_URL },
+        spatialCoverage: 'Pakistan',
+        dateModified: data.generatedAt,
+        variableMeasured: ['Daily rental price (PKR)'],
+        distribution: [
+          {
+            '@type': 'DataDownload',
+            encodingFormat: 'text/csv',
+            contentUrl: `${SITE_URL}/rent-a-car/price-index/download`,
+          },
+        ],
+      }
+    : null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -55,6 +98,12 @@ export default async function PriceIndexPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      {datasetJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
+        />
+      )}
 
       {/* Breadcrumb */}
       <nav className="mb-5 flex items-center gap-2 text-xs text-text-muted">
@@ -74,8 +123,11 @@ export default async function PriceIndexPage() {
           Pakistan Car Rental Price Index
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
-          Real daily rental rates computed directly from vehicles currently listed on KerayeGo —
-          not estimates. Prices vary by vehicle condition, provider, and season; use this as a
+          How much does it cost to rent a car in Pakistan?
+          {data?.overall &&
+            ` Right now, half of the ${data.overall.count.toLocaleString()} cars listed on KerayeGo rent for ${formatPKR(data.overall.medianPrice)} a day or less, and daily rates run from ${formatPKR(data.overall.minPrice)} to ${formatPKR(data.overall.maxPrice)}.`}{' '}
+          These are real rates computed directly from vehicles currently listed on KerayeGo, not
+          estimates. Prices vary by vehicle condition, provider, and season; use this as a
           starting reference, not a quote.
         </p>
         {generatedAt && (
@@ -96,9 +148,14 @@ export default async function PriceIndexPage() {
       ) : (
         <>
           {/* Overall summary */}
-          <div className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile label="Vehicles tracked" value={data.overall.count.toLocaleString()} />
+          <div className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <StatTile
+              label="Vehicles tracked"
+              value={data.overall.count.toLocaleString()}
+              className="col-span-2 sm:col-span-1"
+            />
             <StatTile label="Lowest daily rate" value={formatPKR(data.overall.minPrice)} />
+            <StatTile label="Median daily rate" value={formatPKR(data.overall.medianPrice)} />
             <StatTile label="Average daily rate" value={formatPKR(data.overall.avgPrice)} />
             <StatTile label="Highest daily rate" value={formatPKR(data.overall.maxPrice)} />
           </div>
@@ -176,15 +233,117 @@ export default async function PriceIndexPage() {
               </div>
             </section>
           )}
+
+          {history && history.length >= 2 && (
+            <section className="mt-10">
+              <h2 className="mb-3 text-lg font-semibold text-ink">Month by month</h2>
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full min-w-[480px] text-left text-sm">
+                  <thead className="bg-surface-hover text-xs uppercase tracking-wide text-text-muted">
+                    <tr>
+                      <th className="px-4 py-3">Month</th>
+                      <th className="px-4 py-3">Vehicles</th>
+                      <th className="px-4 py-3">Median</th>
+                      <th className="px-4 py-3">Average</th>
+                      <th className="px-4 py-3">Median vs previous month</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle">
+                    {[...history].reverse().map((entry, i, rows) => {
+                      const previous = rows[i + 1];
+                      const change = previous
+                        ? ((entry.overall.medianPrice - previous.overall.medianPrice) / previous.overall.medianPrice) * 100
+                        : null;
+                      return (
+                        <tr key={entry.month}>
+                          <td className="px-4 py-3 font-medium text-ink">{formatMonth(entry.month)}</td>
+                          <td className="px-4 py-3 text-text-muted">{entry.overall.count}</td>
+                          <td className="px-4 py-3 font-mono font-semibold text-ink">
+                            {formatPKR(entry.overall.medianPrice)}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-text-muted">{formatPKR(entry.overall.avgPrice)}</td>
+                          <td className="px-4 py-3 font-mono text-text-muted">
+                            {change === null ? '—' : `${change > 0 ? '+' : ''}${change.toFixed(1)}%`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-xs text-text-faint">
+                Each month shows the figures recorded on its last day; the current month updates daily.
+              </p>
+            </section>
+          )}
+          {history && history.length === 1 && (
+            <p className="mt-8 text-sm text-text-muted">
+              We started recording these figures every month in {formatMonth(history[0].month)}. A
+              month-by-month comparison will appear here from next month.
+            </p>
+          )}
+
+          {/* Methodology — describes exactly what ListingsService.getPriceIndex()
+              does in kerayego-backend; update both together. */}
+          <section className="mt-12 border-t border-border-subtle pt-8">
+            <h2 className="mb-3 text-lg font-semibold text-ink">How these figures are calculated</h2>
+            <ul className="max-w-3xl space-y-2 text-sm leading-relaxed text-text-muted">
+              <li>
+                Every rental vehicle listed on KerayeGo in Pakistan that our team has approved, from a
+                verified provider with an active account, is included, whether or not it happens to be
+                booked today.
+              </li>
+              <li>
+                The price used is the daily rate the provider lists. Weekly, monthly and 6- or
+                12-hour rates aren&rsquo;t mixed in, and nothing is adjusted for negotiation or
+                season. Every car on KerayeGo is rented with the provider&rsquo;s driver; there are no
+                self-drive listings.
+              </li>
+              <li>
+                The median is the middle price, so half the cars cost that much or less; the average
+                is the plain mean, which a few expensive cars can pull up.
+              </li>
+              <li>
+                A city or make only gets its own row once at least two cars are listed for it.
+              </li>
+              <li>
+                Figures are recalculated from live listings at least every hour, so they move as
+                providers add cars or change prices.
+              </li>
+            </ul>
+          </section>
+
+          <section className="mt-10">
+            <h2 className="mb-3 text-lg font-semibold text-ink">Using this data</h2>
+            <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
+              You&rsquo;re welcome to quote or reuse the figures on this page in articles, research or
+              your own site under the{' '}
+              <a href={CC_BY_URL} target="_blank" rel="noopener noreferrer license" className="font-semibold text-brand-700 hover:underline">
+                Creative Commons Attribution 4.0 licence
+              </a>
+              , as long as you credit KerayeGo and link back to this page. Suggested citation:
+            </p>
+            <p className="mt-3 max-w-3xl rounded-control border border-border-subtle bg-surface px-4 py-3 font-mono text-xs text-ink">
+              KerayeGo, &ldquo;Pakistan Car Rental Price Index&rdquo;, {monthLabel}.{' '}
+              {SITE_URL}/rent-a-car/price-index
+            </p>
+            <a
+              href="/rent-a-car/price-index/download"
+              download
+              className="mt-4 inline-flex h-[38px] items-center rounded-control border border-border-strong px-5 text-sm font-semibold text-ink transition-colors hover:bg-surface-hover"
+            >
+              Download the data (CSV)
+            </a>
+          </section>
         </>
       )}
     </div>
   );
 }
 
-function StatTile({ label, value }: { label: string; value: string }) {
+function StatTile({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <div className="rounded-control border border-border-subtle bg-surface p-3.5">
+    <div className={cn('rounded-control border border-border-subtle bg-surface p-3.5', className)}>
       <div className="mb-1 text-[11px] text-text-faint">{label}</div>
       <div className="font-mono text-[15px] font-semibold text-ink">{value}</div>
     </div>

@@ -237,6 +237,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     },
     {
+      url: `${BASE_URL}/guides/how-carpooling-works`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${BASE_URL}/guides/how-to-offer-a-ride`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
       url: `${BASE_URL}/guides/carpool-safety-pakistan`,
       lastModified: new Date(),
       changeFrequency: 'monthly',

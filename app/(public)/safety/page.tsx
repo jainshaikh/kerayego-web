@@ -67,6 +67,12 @@ export default function SafetyPage() {
             publicly on the site. Vehicle photos carry a KerayeGo watermark, so you know
             you&rsquo;re looking at the real listing, not a copy.
           </p>
+          <p className="mt-3 text-sm leading-relaxed text-text-muted">
+            Every rental car comes with the provider&rsquo;s own driver. KerayeGo doesn&rsquo;t offer
+            self-drive rentals and never asks a provider to hand a car over for self-drive.
+            Providers confirm a booking only after checking the documents they need from the
+            customer, such as a CNIC.
+          </p>
         </section>
 
         <section>
@@ -75,8 +81,9 @@ export default function SafetyPage() {
             <h2 className="text-base font-semibold text-ink">Carpool vehicles and drivers</h2>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-text-muted">
-            Personal vehicles registered for carpooling go through CNIC (national ID) and
-            driving-license verification before they can be used on the platform.
+            Before a personal vehicle can be used for carpooling, our team checks the owner&rsquo;s
+            CNIC (national ID, front and back), driving licence and the vehicle&rsquo;s
+            registration. Only an approved vehicle can be used to post a trip.
           </p>
         </section>
 
@@ -87,8 +94,9 @@ export default function SafetyPage() {
           </div>
           <p className="mt-3 text-sm leading-relaxed text-text-muted">
             Every listing has a direct WhatsApp button so you can message the provider or driver
-            yourself. For an active carpool trip, chat and — where a driver has enabled it — live
-            location sharing are also available in the app.
+            yourself. Once a carpool trip has started, the driver and each accepted rider can chat
+            in the app, and accepted riders can follow the driver&rsquo;s live location while
+            it&rsquo;s being shared.
           </p>
         </section>
 

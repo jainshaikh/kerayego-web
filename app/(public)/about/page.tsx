@@ -71,6 +71,7 @@ export default function AboutPage() {
           <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
             Browse vehicles by city, make, and price from providers across Pakistan, compare real
             daily rates, and send a booking request directly from the listing — no middleman.
+            Every car comes with the provider&rsquo;s own driver; we don&rsquo;t offer self-drive.
           </p>
           <Link
             href="/rent-a-car"

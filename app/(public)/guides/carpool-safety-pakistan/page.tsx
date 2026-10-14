@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight, MessageCircle, ShieldCheck } from 'lucide-react';
+import { GuideByline } from '../../../../components/common/GuideByline';
 
 export const metadata: Metadata = {
   title: 'Carpool Safety in Pakistan',
@@ -61,6 +62,12 @@ export default function CarpoolSafetyGuidePage() {
         <h1 className="text-[26px] font-bold tracking-tight text-ink">
           Carpool Safety in Pakistan
         </h1>
+        <GuideByline
+          title="Carpool Safety in Pakistan"
+          path="/guides/carpool-safety-pakistan"
+          published="2026-09-19"
+          updated="2026-10-14"
+        />
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
           Carpooling on KerayeGo means a driver posts an intercity trip in their own vehicle with
           available seats, and other users request a seat on that trip. Here&rsquo;s what&rsquo;s
@@ -75,8 +82,9 @@ export default function CarpoolSafetyGuidePage() {
           <h2 className="text-base font-semibold text-ink">Vehicle and driver verification</h2>
         </div>
         <p className="mt-3 text-sm leading-relaxed text-text-muted">
-          A personal vehicle registered for carpooling goes through CNIC (national ID) and
-          driving-license verification before it can be used on the platform.
+          Before a personal vehicle can be used for carpooling, our team checks the owner&rsquo;s
+          CNIC (national ID, front and back), driving licence and the vehicle&rsquo;s registration.
+          Only an approved vehicle can be used to post a trip.
         </p>
       </section>
 
@@ -86,8 +94,9 @@ export default function CarpoolSafetyGuidePage() {
           <h2 className="text-base font-semibold text-ink">Staying in touch during the trip</h2>
         </div>
         <p className="mt-3 text-sm leading-relaxed text-text-muted">
-          Riders and drivers can message each other through in-app chat, and on an active trip a
-          driver can share live location.
+          Once the driver starts the trip, they and each accepted rider can message each other in
+          in-app chat, and accepted riders can follow the driver&rsquo;s live location while the
+          driver shares it. Nobody else can see it.
         </p>
       </section>
 
@@ -102,7 +111,9 @@ export default function CarpoolSafetyGuidePage() {
       <section className="mb-8">
         <h2 className="mb-2 text-base font-semibold text-ink">Before you go</h2>
         <ul className="space-y-2 text-sm leading-relaxed text-text-muted">
-          <li>Confirm the pickup point and time clearly beforehand over chat.</li>
+          <li>
+            Confirm the pickup point and time with the driver by phone or WhatsApp before the day.
+          </li>
           <li>Share your trip plan with someone you trust.</li>
           <li>Trust your own judgment if anything feels off before you get in the vehicle.</li>
         </ul>
@@ -111,8 +122,19 @@ export default function CarpoolSafetyGuidePage() {
       <section className="mb-10">
         <h2 className="mb-2 text-base font-semibold text-ink">Changed your mind?</h2>
         <p className="text-sm leading-relaxed text-text-muted">
-          You can cancel a seat request you&rsquo;ve sent, as long as it hasn&rsquo;t already been
-          completed.
+          You can withdraw a seat request at any time while the driver hasn&rsquo;t answered it.
+          Once you&rsquo;ve been accepted, you can still cancel up until the departure time.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-text-muted">
+          New to carpooling? See{' '}
+          <Link href="/guides/how-carpooling-works" className="font-semibold text-brand-700 hover:underline">
+            how carpooling works
+          </Link>
+          , or if you&rsquo;re driving,{' '}
+          <Link href="/guides/how-to-offer-a-ride" className="font-semibold text-brand-700 hover:underline">
+            how to offer a ride
+          </Link>
+          .
         </p>
       </section>
 

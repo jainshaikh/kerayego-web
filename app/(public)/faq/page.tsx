@@ -38,6 +38,16 @@ const FAQS: { question: string; answer: string }[] = [
       "No. KerayeGo doesn't process payments on the platform today. Rental and carpool payments are arranged directly between you and the provider or driver.",
   },
   {
+    question: 'Can I rent a car without a driver (self-drive)?',
+    answer:
+      "No. Every car on KerayeGo is rented with a driver provided by the rental company. KerayeGo doesn't offer self-drive rentals and never asks providers to hand over their cars for self-drive.",
+  },
+  {
+    question: 'Will the provider ask for my documents?',
+    answer:
+      'Yes, they may. Providers confirm a booking only after checking the documents they need from you, for example your CNIC, so keep them ready when they get in touch.',
+  },
+  {
     question: 'How does carpooling work on KerayeGo?',
     answer:
       'Drivers post a trip with their route, date, and available seats. Riders browse routes between cities and send a request to join. Once the driver accepts, both sides coordinate pickup directly.',
@@ -50,12 +60,12 @@ const FAQS: { question: string; answer: string }[] = [
   {
     question: 'Are the vehicles on KerayeGo verified?',
     answer:
-      "Every rental listing is reviewed before it appears on the site. Personal vehicles registered for carpooling go through CNIC and driving-license verification, and vehicle photos carry a KerayeGo watermark so you know you're looking at the real listing.",
+      "Every rental listing is reviewed before it appears on the site. Before a personal vehicle can be used for carpooling, our team checks the owner's CNIC (front and back), driving licence and the vehicle's registration. Vehicle photos carry a KerayeGo watermark so you know you're looking at the real listing.",
   },
   {
     question: 'Can I cancel a booking or a ride request?',
     answer:
-      "Yes — you can cancel a rental booking request or a carpool seat request you've sent from your dashboard, as long as it hasn't already been completed.",
+      "Yes. You can cancel a rental booking request you've sent from your account, as long as it hasn't already been completed. A carpool seat request can be withdrawn any time before the driver answers it, and once you've been accepted you can still cancel up until the departure time.",
   },
   {
     question: 'Which cities does KerayeGo cover?',
@@ -65,7 +75,7 @@ const FAQS: { question: string; answer: string }[] = [
   {
     question: 'How do I list my vehicle for rent, or offer rides as a driver?',
     answer:
-      'To list a vehicle for rent, register as a provider and add your vehicle from your provider dashboard. To offer carpool rides, any registered user can post a trip from the Carpool section — no separate provider account needed.',
+      'To list a vehicle for rent, register as a provider and add your vehicle from your provider dashboard. To offer carpool rides, any registered user can post a trip once they have registered their car and our team has approved it — no separate provider account needed.',
   },
   {
     question: 'How do I contact a provider or a fellow traveler?',

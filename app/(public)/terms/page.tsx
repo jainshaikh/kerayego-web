@@ -82,6 +82,9 @@ export default function TermsPage() {
           <p>
             KerayeGo is a marketplace, not a vehicle rental company or transport operator. On the
             rental side, providers list vehicles and users send booking requests directly to them.
+            Rental vehicles are offered only with a driver supplied by the provider; KerayeGo does
+            not offer self-drive rentals, and providers are expected to check the customer&rsquo;s
+            documents before confirming a booking.
             On the carpool side, any user can post an intercity trip in their own vehicle, and
             others can request a seat. KerayeGo connects these parties — the rental or ride itself
             is an agreement between you and the provider, driver, or rider you&rsquo;re dealing with.
