@@ -18,7 +18,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <PublicNavbar />
       <main className="flex-1">{children}</main>
       <footer className="mt-auto border-t border-slate-200 bg-white py-6">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 text-sm text-slate-400 sm:flex-row sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 text-sm text-slate-500 sm:flex-row sm:px-6 lg:px-8">
           <p>© {new Date().getFullYear()} KerayeGo. All rights reserved.</p>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
             {FOOTER_LINKS.map(({ href, label }) => (
@@ -28,7 +28,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             ))}
           </div>
         </div>
-        <AppDownloadButtons variant="links" className="mt-3 px-4 text-sm text-slate-400" />
+        <AppDownloadButtons variant="links" className="mt-3 px-4 text-sm text-slate-500" />
       </footer>
     </div>
   );
