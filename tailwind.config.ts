@@ -61,7 +61,8 @@ const config: Config = {
           50: '#FFF0F2',
           100: '#FFDDE2',
           600: '#FF4E64',
-          700: '#E63350',
+          // Darkened from #E63350 (4.01:1 on bg-page) to pass WCAG AA 4.5:1 for text.
+          700: '#D42A46',
           800: '#C2203C',
         },
         // Second half of the brand gradient. Use via bg-brand (backgroundImage)

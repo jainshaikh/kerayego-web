@@ -34,12 +34,12 @@
     --muted: 21 100% 96%;
     --muted-foreground: 340 12% 43%; /* text-muted:     #7A5F68 */
     --accent: 351 100% 97%; /* brand-50:       #FFF0F2 */
-    --accent-foreground: 350 76% 55%; /* brand-700:      #E63350 */
+    --accent-foreground: 350 67% 50%; /* brand-700:      #D42A46 */
     --destructive: 0 72.2% 50.6%; /* status.red.dot: #DC2626 */
     --destructive-foreground: 0 0% 100%;
     --border: 18 47% 90%; /* border-subtle:  #F0DFD7 */
     --input: 16 38% 82%; /* border-strong:  #E2CBC1 */
-    --ring: 350 76% 55%; /* brand-700:      #E63350 */
+    --ring: 350 67% 50%; /* brand-700:      #D42A46 */
     --radius: 0.6875rem; /* 11px — was 0.5rem */
   }
 }
