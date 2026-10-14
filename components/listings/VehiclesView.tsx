@@ -324,8 +324,8 @@ export function VehiclesView({ initialData, makes, cities, initialLocation }: Ve
                 isLoadingResults && 'pointer-events-none opacity-70 transition-opacity',
               )}
             >
-              {vehicles.map((vehicle) => (
-                <VehicleCard key={vehicle.id} vehicle={vehicle} />
+              {vehicles.map((vehicle, i) => (
+                <VehicleCard key={vehicle.id} vehicle={vehicle} priority={i === 0} />
               ))}
             </div>
 

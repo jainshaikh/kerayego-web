@@ -78,7 +78,8 @@ const config: Config = {
         'border-subtle': '#F0DFD7',
         'border-strong': '#E2CBC1',
         'text-muted': '#7A5F68',
-        'text-faint': '#A98D96',
+        // Darkened from #A98D96 (2.86:1 on bg-page) to pass WCAG AA 4.5:1.
+        'text-faint': '#8B6974',
         whatsapp: {
           DEFAULT: '#25D366',
           hover: '#1FB855',

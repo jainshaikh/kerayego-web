@@ -90,6 +90,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-page">
       <PublicNavbar />
+      <main>
 
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white">
@@ -265,6 +266,8 @@ export default async function HomePage() {
           </Reveal>
         </div>
       </section>
+
+      </main>
 
       {/* ── Footer ────────────────────────────────────────────────────── */}
       <footer className="border-t border-border-subtle bg-surface">

@@ -19,7 +19,7 @@ const mono = IBM_Plex_Mono({
   variable: '--font-mono',
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://rentalmarket.ae';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.kerayego.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

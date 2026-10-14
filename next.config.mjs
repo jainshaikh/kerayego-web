@@ -80,10 +80,10 @@ const nextConfig = {
         permanent: true,
       },
       // URL rename, 2026-08-28: /vehicles -> /rent-a-car (nav + browse-all
-      // page). Individual /vehicles/:slug deep links aren't redirectable
-      // this way — the new URL needs the vehicle's city/make/model, which a
-      // static redirect can't look up — same limitation as /trips/:id above.
-      // Not indexed yet, so the risk is negligible.
+      // page). Individual /vehicles/:slug deep links can't be mapped here —
+      // the new URL needs the vehicle's city/make/model — so they're handled
+      // by app/vehicles/[slug]/route.ts, which looks the vehicle up and 301s
+      // (some were still in Google's index per Search Console).
       {
         source: '/vehicles',
         destination: '/rent-a-car',

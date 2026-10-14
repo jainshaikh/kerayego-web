@@ -15,9 +15,12 @@ import { SaveButton } from './SaveButton';
 interface VehicleCardProps {
   vehicle: ListingVehicleCard;
   className?: string;
+  /** Load the cover eagerly — set on the first card of a grid, which is the
+   * page's Largest Contentful Paint element on mobile (one column). */
+  priority?: boolean;
 }
 
-export function VehicleCard({ vehicle, className }: VehicleCardProps) {
+export function VehicleCard({ vehicle, className, priority = false }: VehicleCardProps) {
   const router = useRouter();
   const cover = vehicle.images?.[0];
   const price = Number(vehicle.pricePerDay).toLocaleString();
@@ -49,6 +52,7 @@ export function VehicleCard({ vehicle, className }: VehicleCardProps) {
             src={cover.url}
             alt={cover.altText ?? vehicleImageAlt(vehicle.title, vehicle.showroom?.city)}
             fill
+            priority={priority}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="ease-smooth object-cover transition-transform duration-500 group-hover:scale-[1.07]"
           />

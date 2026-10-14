@@ -322,9 +322,10 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
 
       {vehicles.length > 0 ? (
         <>
+          <h2 className="sr-only">Cars for rent in {displayName}</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {vehicles.map((vehicle) => (
-              <VehicleCard key={vehicle.id} vehicle={vehicle} />
+            {vehicles.map((vehicle, i) => (
+              <VehicleCard key={vehicle.id} vehicle={vehicle} priority={i === 0} />
             ))}
           </div>
 

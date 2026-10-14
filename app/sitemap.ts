@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { getVehicleUrl } from '../lib/utils/vehicleUrl';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://rentalmarket.ae';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.kerayego.com';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1';
 
 async function fetchJson<T>(path: string, revalidate: number): Promise<T | null> {

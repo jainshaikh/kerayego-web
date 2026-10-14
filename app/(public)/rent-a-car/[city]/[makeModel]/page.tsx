@@ -292,9 +292,12 @@ export default async function CityMakeModelCarRentalPage({ params, searchParams 
         </p>
       </div>
 
+      <h2 className="sr-only">
+        {vehicleName} cars for rent in {cityName}
+      </h2>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {vehicles.map((vehicle) => (
-          <VehicleCard key={vehicle.id} vehicle={vehicle} />
+        {vehicles.map((vehicle, i) => (
+          <VehicleCard key={vehicle.id} vehicle={vehicle} priority={i === 0} />
         ))}
       </div>
 

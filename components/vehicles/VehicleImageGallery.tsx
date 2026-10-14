@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, X } from 'lucide-react';
 import { cn } from '../../lib/utils/cn';
@@ -63,18 +64,27 @@ export function VehicleImageGallery({ images, title, city }: VehicleImageGallery
           className="absolute inset-0"
         >
           <AnimatePresence initial={false} custom={direction} mode="wait">
-            <motion.img
+            <motion.div
               key={active.id}
-              src={active.url}
-              alt={active.altText ?? vehicleImageAlt(title, city, index + 1)}
-              className="h-full w-full cursor-zoom-in object-cover"
+              className="absolute inset-0 cursor-zoom-in"
               custom={direction}
               initial={{ opacity: 0, x: direction >= 0 ? 40 : -40 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: direction >= 0 ? -40 : 40 }}
               transition={{ duration: 0.22, ease: 'easeOut' }}
               onClick={() => setLightboxOpen(true)}
-            />
+            >
+              {/* next/image: responsive sizes + WebP/AVIF. The first photo is
+                  usually the detail page's largest element, so load it eagerly. */}
+              <Image
+                src={active.url}
+                alt={active.altText ?? vehicleImageAlt(title, city, index + 1)}
+                fill
+                priority={index === 0}
+                sizes="(max-width: 1024px) 100vw, 66vw"
+                className="object-cover"
+              />
+            </motion.div>
           </AnimatePresence>
         </SwipeableSlide>
 
@@ -104,11 +114,12 @@ export function VehicleImageGallery({ images, title, city }: VehicleImageGallery
                 idx === index ? 'ring-brand-600' : 'ring-transparent hover:ring-border-strong',
               )}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={img.url}
                 alt={img.altText ?? vehicleImageAlt(title, city, idx + 1)}
-                className="h-full w-full object-cover"
+                fill
+                sizes="64px"
+                className="object-cover"
               />
             </button>
           ))}
@@ -138,17 +149,23 @@ export function VehicleImageGallery({ images, title, city }: VehicleImageGallery
 
             <SwipeableSlide onSwipeLeft={goNext} onSwipeRight={goPrev} className="relative flex-1">
               <AnimatePresence initial={false} custom={direction} mode="wait">
-                <motion.img
+                <motion.div
                   key={active.id}
-                  src={active.url}
-                  alt={active.altText ?? vehicleImageAlt(title, city, index + 1)}
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="absolute inset-0"
                   custom={direction}
                   initial={{ opacity: 0, x: direction >= 0 ? 60 : -60 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: direction >= 0 ? -60 : 60 }}
                   transition={{ duration: 0.22, ease: 'easeOut' }}
-                />
+                >
+                  <Image
+                    src={active.url}
+                    alt={active.altText ?? vehicleImageAlt(title, city, index + 1)}
+                    fill
+                    sizes="100vw"
+                    className="object-contain"
+                  />
+                </motion.div>
               </AnimatePresence>
 
               {count > 1 && (
@@ -173,12 +190,7 @@ export function VehicleImageGallery({ images, title, city }: VehicleImageGallery
                       idx === index ? 'ring-white' : 'ring-transparent opacity-60 hover:opacity-100',
                     )}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={img.url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
+                    <Image src={img.url} alt="" fill sizes="48px" className="object-cover" />
                   </button>
                 ))}
               </div>
