@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { ChevronRight, FileText, MapPin, Phone } from 'lucide-react';
 import {
   useAdminProviderDetail,
+  useAdminProviderSummary,
   useApproveProvider,
   useRejectProvider,
 } from '../../../../../hooks/useAdmin';
@@ -68,6 +69,7 @@ export default function AdminProviderDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { data: provider, isLoading, isError, refetch } = useAdminProviderDetail(id);
+  const { data: summary } = useAdminProviderSummary(id);
   const approve = useApproveProvider();
   const reject = useRejectProvider();
   const [modal, setModal] = useState<'approve' | 'reject' | null>(null);
@@ -145,6 +147,83 @@ export default function AdminProviderDetailPage() {
           <p className="mt-0.5 text-xs text-text-muted">Documents</p>
         </Card>
       </div>
+
+      {/* Business Summary (A31) */}
+      {summary && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="p-5 space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-text-faint">Team Breakdown (A31)</h2>
+            <div className="grid grid-cols-3 gap-2 text-center pt-1">
+              <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
+                <p className="text-lg font-semibold text-ink font-mono">{summary.members.businessAdmins}</p>
+                <p className="text-[11px] text-text-muted">Admins</p>
+              </div>
+              <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
+                <p className="text-lg font-semibold text-ink font-mono">{summary.members.managers}</p>
+                <p className="text-[11px] text-text-muted">Managers</p>
+              </div>
+              <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
+                <p className="text-lg font-semibold text-ink font-mono">{summary.members.drivers}</p>
+                <p className="text-[11px] text-text-muted">{summary.members.verifiedDrivers} Verified Drivers</p>
+              </div>
+            </div>
+            <p className="text-xs text-text-muted text-center pt-1">Total team roster: {summary.members.total} members</p>
+          </Card>
+
+          <Card className="p-5 space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-text-faint">Bookings & Rides Breakdown (A31)</h2>
+            <div className="grid grid-cols-3 gap-2 text-center pt-1">
+              <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
+                <p className="text-lg font-semibold text-emerald-600 font-mono">{summary.bookings.inProgress}</p>
+                <p className="text-[11px] text-text-muted">In Progress</p>
+              </div>
+              <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
+                <p className="text-lg font-semibold text-ink font-mono">{summary.bookings.completed}</p>
+                <p className="text-[11px] text-text-muted">Completed</p>
+              </div>
+              <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
+                <p className="text-lg font-semibold text-rose-600 font-mono">
+                  {summary.bookings.cancelled + summary.bookings.rejected}
+                </p>
+                <p className="text-[11px] text-text-muted">Cancelled/Rejected</p>
+              </div>
+            </div>
+            <p className="text-xs text-text-muted text-center pt-1">Total bookings requested: {summary.bookings.total}</p>
+          </Card>
+        </div>
+      )}
+
+      {/* Business Activity Logs (A31, A33) */}
+      {summary && summary.recentActivity?.length > 0 && (
+        <Card className="p-6">
+          <h2 className="mb-3 text-base font-semibold text-ink">Business Activity Logs (A31)</h2>
+          <p className="mb-4 text-xs text-text-muted">Audit log of key events and moderation actions for this business.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-border-subtle text-text-faint uppercase font-medium">
+                <tr>
+                  <th className="pb-2">Action</th>
+                  <th className="pb-2">Admin / Actor</th>
+                  <th className="pb-2">Details</th>
+                  <th className="pb-2">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {summary.recentActivity.map((log) => (
+                  <tr key={log.id} className="text-ink">
+                    <td className="py-2.5 font-medium">{log.actionType}</td>
+                    <td className="py-2.5 text-text-muted">{log.adminUser?.name || 'System'}</td>
+                    <td className="py-2.5 font-mono text-[11px] text-text-muted max-w-xs truncate">
+                      {log.metadata ? JSON.stringify(log.metadata) : '—'}
+                    </td>
+                    <td className="py-2.5 text-text-faint">{new Date(log.createdAt).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Business info + owner */}
       <div className="grid gap-5 sm:grid-cols-2">

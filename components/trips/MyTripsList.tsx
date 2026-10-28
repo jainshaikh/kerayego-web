@@ -84,8 +84,9 @@ export function MyTripsList({ basePath, newHref }: MyTripsListProps) {
                   </div>
 
                   <p className="mt-1 font-mono text-xs text-text-muted">
-                    {trip.userVehicle.make} {trip.userVehicle.model} ·{' '}
-                    {formatTripDateTime(trip.departureAt)} PKT
+                    {trip.fleetVehicle?.title ??
+                      `${trip.userVehicle?.make ?? ''} ${trip.userVehicle?.model ?? ''}`.trim()}{' '}
+                    · {formatTripDateTime(trip.departureAt)} PKT
                   </p>
 
                   <div className="mt-2.5 flex flex-wrap items-center gap-4">

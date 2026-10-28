@@ -41,8 +41,11 @@ interface TripCardProps {
 
 export function TripCard({ trip, className, href }: TripCardProps) {
   const price = Number(trip.pricePerSeat).toLocaleString();
+  const vehicle = trip.isReturnTrip ? trip.fleetVehicle : trip.userVehicle;
+  const vehicleMake = vehicle?.make ?? '';
+  const vehicleModel = vehicle?.model ?? '';
   const currency = getCurrencyCode(trip.userVehicle?.country);
-  const poster = trip.userVehicle.images[0];
+  const poster = vehicle?.images?.[0];
   const pickupCount = trip.stops.filter((s) => s.type === 'PICKUP').length;
   const dropoffCount = trip.stops.filter((s) => s.type === 'DROPOFF').length;
   const hasMultipleStops = pickupCount > 1 || dropoffCount > 1;
@@ -71,7 +74,7 @@ export function TripCard({ trip, className, href }: TripCardProps) {
         {poster ? (
           <Image
             src={poster.url}
-            alt={poster.altText ?? `${trip.userVehicle.make} ${trip.userVehicle.model}`}
+            alt={poster.altText ?? `${vehicleMake} ${vehicleModel}`}
             fill
             className="ease-smooth object-cover transition-transform duration-500 group-hover:scale-[1.07]"
             sizes="(max-width: 768px) 100vw, 400px"
@@ -123,8 +126,9 @@ export function TripCard({ trip, className, href }: TripCardProps) {
         <p className="mt-1.5 flex items-center gap-1.5 text-xs text-text-muted">
           <Car className="h-3.5 w-3.5 flex-shrink-0 text-text-faint" />
           <span className="truncate">
-            {trip.userVehicle.make} {trip.userVehicle.model}
-            {trip.userVehicle.color ? ` · ${trip.userVehicle.color}` : ''}
+            {vehicleMake} {vehicleModel}
+            {trip.userVehicle?.color ? ` · ${trip.userVehicle.color}` : ''}
+            {trip.isReturnTrip && trip.providerProfile ? ` · ${trip.providerProfile.businessName}` : ''}
           </span>
         </p>
 

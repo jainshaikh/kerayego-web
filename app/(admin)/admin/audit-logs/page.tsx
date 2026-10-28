@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { ScrollText } from 'lucide-react';
-import { useAuditLogs } from '../../../../hooks/useAdmin';
+import { ScrollText, Trash2 } from 'lucide-react';
+import { useAuditLogs, useDeleteAuditLog } from '../../../../hooks/useAdmin';
+import { useAuth } from '../../../../hooks/useAuth';
 import { ActionBadge, AdminPageHeader, AdminTableFooter } from '../../../../components/admin';
-import { Avatar, Button, EmptyState, Input, Select } from '../../../../components/ui';
+import { Avatar, Button, ConfirmDialog, EmptyState, Input, Select } from '../../../../components/ui';
 import { cn } from '../../../../lib/utils/cn';
 
 const ENTITY_TYPE_OPTS = [
@@ -21,6 +22,11 @@ export default function AuditLogsPage() {
   const [entityType, setEntityType] = useState('');
   const [entityId, setEntityId] = useState('');
   const [entityIdInput, setEntityIdInput] = useState('');
+  const [logToDelete, setLogToDelete] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const deleteLog = useDeleteAuditLog();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   const { data, isFetching } = useAuditLogs({
     entityType: entityType || undefined,
@@ -162,6 +168,16 @@ export default function AuditLogsPage() {
                     timeStyle: 'short',
                   })}
                 </time>
+
+                {isSuperAdmin && log.actionType !== 'LOG_DELETED' && (
+                  <button
+                    onClick={() => setLogToDelete(log.id)}
+                    className="p-1.5 text-text-faint hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
+                    title="Delete log entry (Super Admin only, A45)"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -176,6 +192,23 @@ export default function AuditLogsPage() {
           onPageChange={setPage}
         />
       )}
+
+      <ConfirmDialog
+        open={!!logToDelete}
+        onOpenChange={(open) => !open && setLogToDelete(null)}
+        title="Delete audit log entry?"
+        description="Only Super Admins may delete log entries. This action itself will be permanently recorded in the immutable audit log (A45)."
+        requireReason
+        reasonLabel="Reason for deletion"
+        confirmLabel="Delete entry"
+        cancelLabel="Cancel"
+        loading={deleteLog.isPending}
+        onConfirm={async (reason) => {
+          if (!reason || !logToDelete) return;
+          await deleteLog.mutateAsync({ id: logToDelete, reason });
+          setLogToDelete(null);
+        }}
+      />
     </div>
   );
 }

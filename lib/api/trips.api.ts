@@ -65,15 +65,43 @@ export interface TripCard {
   notes: string | null;
   status: TripStatus;
   createdAt: string;
+  isReturnTrip?: boolean;
   postedBy: { id: string; name: string };
-  userVehicle: TripVehicle;
+  userVehicle?: TripVehicle | null;
+  fleetVehicle?: {
+    id: string;
+    title: string;
+    make: string;
+    model: string;
+    year: number;
+    seatingCapacity: number;
+    images: TripVehicleImage[];
+  } | null;
+  providerProfile?: {
+    id: string;
+    businessName: string;
+    slug: string;
+    logoUrl: string | null;
+    verificationStatus: string;
+  } | null;
 }
 
 export interface TripDetail extends TripCard {
   rejectionReason: string | null;
   cancelReason: string | null;
   updatedAt: string;
-  userVehicle: TripVehicle & { plateNumber: string; status: string };
+  returnFromBookingId?: string | null;
+  userVehicle?: (TripVehicle & { plateNumber: string; status: string }) | null;
+  fleetVehicle?: {
+    id: string;
+    title: string;
+    make: string;
+    model: string;
+    year: number;
+    seatingCapacity: number;
+    status: string;
+    images: { id: string; url: string; altText: string | null; sortOrder: number }[];
+  } | null;
 }
 
 export interface TripFilters {

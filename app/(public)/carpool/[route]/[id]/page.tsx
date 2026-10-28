@@ -35,8 +35,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!res?.data) notFound();
 
   const t = res.data;
+  const vehicle = t.isReturnTrip ? t.fleetVehicle : t.userVehicle;
+  const vehicleMake = vehicle?.make ?? '';
+  const vehicleModel = vehicle?.model ?? '';
   const description = `Trip from ${titleCase(t.originCity)} to ${titleCase(t.destinationCity)} on ${formatTripDate(t.departureAt, { dateStyle: 'medium' })}. ${getCurrencyCode(t.userVehicle?.country)} ${Number(t.pricePerSeat).toLocaleString()} per seat.`;
-  const coverImage = t.userVehicle?.images?.[0]?.url;
+  const coverImage = vehicle?.images?.[0]?.url;
   // Canonical is derived from the trip's own live route, not the URL's
   // [route] segment — if they ever mismatch (a stale/shared link), the
   // canonical still points at the correct permanent URL for this trip.
@@ -52,7 +55,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${titleCase(t.originCity)} → ${titleCase(t.destinationCity)}`,
       description,
       images: coverImage
-        ? [{ url: coverImage, alt: `${t.userVehicle.make} ${t.userVehicle.model}` }]
+        ? [{ url: coverImage, alt: `${vehicleMake} ${vehicleModel}` }]
         : undefined,
     },
   };
@@ -63,6 +66,11 @@ export default async function TripDetailPage({ params }: PageProps) {
   if (!res?.data) notFound();
 
   const trip = res.data;
+  const vehicle = trip.isReturnTrip ? trip.fleetVehicle : trip.userVehicle;
+  const vehicleImages = vehicle?.images ?? [];
+  const vehicleMake = vehicle?.make ?? '';
+  const vehicleModel = vehicle?.model ?? '';
+  const vehicleYear = vehicle?.year ? ` (${vehicle.year})` : '';
   const price = Number(trip.pricePerSeat).toLocaleString();
   const currency = getCurrencyCode(trip.userVehicle?.country);
   const routeSlug = `${trip.originCity.toLowerCase()}-to-${trip.destinationCity.toLowerCase()}`;
@@ -145,16 +153,16 @@ export default async function TripDetailPage({ params }: PageProps) {
           </div>
 
           {/* Vehicle photos */}
-          {trip.userVehicle.images.length > 0 && (
+          {vehicleImages.length > 0 && (
             <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {trip.userVehicle.images.map((image, index) => (
+              {vehicleImages.map((image, index) => (
                 <div
                   key={image.url}
                   className={`relative aspect-video overflow-hidden rounded-media border border-border-subtle ${index === 0 ? 'col-span-2 aspect-[16/9] sm:col-span-3' : ''}`}
                 >
                   <Image
                     src={image.url}
-                    alt={image.altText ?? `${trip.userVehicle.make} ${trip.userVehicle.model}`}
+                    alt={image.altText ?? `${vehicleMake} ${vehicleModel}`}
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, 700px"
@@ -230,20 +238,36 @@ export default async function TripDetailPage({ params }: PageProps) {
 
           {/* Vehicle info */}
           <Card>
-            <h2 className="mb-3 text-base font-semibold text-ink">Vehicle</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-semibold text-ink">Vehicle</h2>
+              {trip.isReturnTrip && trip.providerProfile && (
+                <span className="inline-flex items-center rounded-badge bg-status-blue-bg px-2 py-0.5 text-xs font-medium text-brand-700">
+                  Business fleet · {trip.providerProfile.businessName}
+                </span>
+              )}
+            </div>
             <p className="font-medium text-ink">
-              {trip.userVehicle.make} {trip.userVehicle.model}
-              {trip.userVehicle.year ? ` (${trip.userVehicle.year})` : ''}
+              {vehicleMake} {vehicleModel}
+              {vehicleYear}
             </p>
-            {trip.userVehicle.color && (
+            {trip.userVehicle?.color && (
               <p className="mt-1 text-sm text-text-muted">{trip.userVehicle.color}</p>
             )}
-            <RatingSummaryBadge
-              subjectType="USER_VEHICLE"
-              subjectId={trip.userVehicle.id}
-              size="sm"
-              className="mt-2"
-            />
+            {trip.isReturnTrip && trip.fleetVehicle ? (
+              <RatingSummaryBadge
+                subjectType="VEHICLE"
+                subjectId={trip.fleetVehicle.id}
+                size="sm"
+                className="mt-2"
+              />
+            ) : trip.userVehicle ? (
+              <RatingSummaryBadge
+                subjectType="USER_VEHICLE"
+                subjectId={trip.userVehicle.id}
+                size="sm"
+                className="mt-2"
+              />
+            ) : null}
           </Card>
 
           {trip.notes && (

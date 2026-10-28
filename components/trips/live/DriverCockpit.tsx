@@ -153,8 +153,10 @@ export function DriverCockpit({ trip, backHref }: DriverCockpitProps) {
               Trip details
             </p>
             <p className="text-text-muted">
-              {trip.userVehicle.make} {trip.userVehicle.model}
-              {trip.userVehicle.year ? ` (${trip.userVehicle.year})` : ''}
+              {trip.fleetVehicle?.title ??
+                `${trip.userVehicle?.make ?? ''} ${trip.userVehicle?.model ?? ''}${
+                  trip.userVehicle?.year ? ` (${trip.userVehicle.year})` : ''
+                }`.trim()}
             </p>
             <p className="font-mono text-ink">
               {getCurrencyCode(trip.userVehicle?.country)} {Number(trip.pricePerSeat).toLocaleString()} /

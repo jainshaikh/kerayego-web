@@ -6,6 +6,7 @@ export type BookingStatus =
   | 'PENDING'
   | 'CONTACTED'
   | 'ACCEPTED'
+  | 'IN_PROGRESS'
   | 'REJECTED'
   | 'CANCELLED'
   | 'COMPLETED';
@@ -46,6 +47,21 @@ export interface BookingRequest {
   durationQuantity?: number | null;
   totalPrice?: string | number | null;
   pickupLocation?: string | null;
+  isOneWay?: boolean;
+  pickupCity?: string | null;
+  dropoffCity?: string | null;
+  dropoffLocation?: string | null;
+  assignedDriverId?: string | null;
+  assignedDriver?: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    avatarUrl?: string | null;
+    driverProfile?: {
+      licenseCategory: string;
+      yearsOfExperience?: number | null;
+    } | null;
+  } | null;
   message?: string | null;
   providerNotes?: string | null;
   createdAt: string;
@@ -108,6 +124,41 @@ export const bookingsApi = {
   updateStatus: (id: string, data: UpdateBookingStatusData) =>
     apiClient
       .patch<BookingRequest>(`/booking-requests/${id}/status`, data)
+      .then((r) => r.data),
+
+  // Live driver tracking (Phase 7, D8)
+  getLiveDriver: (id: string) =>
+    apiClient
+      .get<{
+        driver: {
+          id: string;
+          name: string;
+          avatarUrl: string | null;
+          phone: string | null;
+          driverProfile?: any;
+        };
+        lastLocation: {
+          lat: number | null;
+          lng: number | null;
+          heading: number | null;
+          speed: number | null;
+          updatedAt: string | null;
+        };
+      }>(`/booking-requests/${id}/live-driver`)
+      .then((r) => r.data),
+
+  getLiveRoute: (id: string) =>
+    apiClient
+      .get<
+        Array<{
+          id: string;
+          lat: number;
+          lng: number;
+          heading: number | null;
+          speed: number | null;
+          recordedAt: string;
+        }>
+      >(`/booking-requests/${id}/live-route`)
       .then((r) => r.data),
 
   // Provider

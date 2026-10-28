@@ -113,9 +113,9 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
           )}
         </div>
 
-        {trip.userVehicle.images.length > 0 && (
+        {((trip.isReturnTrip ? trip.fleetVehicle?.images : trip.userVehicle?.images) ?? []).length > 0 && (
           <div className="mt-5 flex gap-2.5 overflow-x-auto pb-1">
-            {trip.userVehicle.images.map((image) => (
+            {((trip.isReturnTrip ? trip.fleetVehicle?.images : trip.userVehicle?.images) ?? []).map((image) => (
               <div
                 key={image.url}
                 className="relative h-20 w-28 flex-shrink-0 overflow-hidden rounded-media border border-border-subtle"
@@ -128,15 +128,24 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
 
         <div className="mt-6 grid gap-5 border-t border-border-subtle pt-5 sm:grid-cols-2">
           <Field label="Vehicle">
-            <Link
-              href={`${vehicleBasePath}/${trip.userVehicle.id}`}
-              className="font-medium text-brand-700 transition-colors hover:text-brand-800"
-            >
-              {trip.userVehicle.make} {trip.userVehicle.model}
-              {trip.userVehicle.year ? ` (${trip.userVehicle.year})` : ''}
-            </Link>
+            {trip.isReturnTrip && trip.fleetVehicle ? (
+              <span className="font-medium text-ink">
+                {trip.fleetVehicle.title}
+                {trip.providerProfile ? ` (${trip.providerProfile.businessName})` : ''}
+              </span>
+            ) : trip.userVehicle ? (
+              <Link
+                href={`${vehicleBasePath}/${trip.userVehicle.id}`}
+                className="font-medium text-brand-700 transition-colors hover:text-brand-800"
+              >
+                {trip.userVehicle.make} {trip.userVehicle.model}
+                {trip.userVehicle.year ? ` (${trip.userVehicle.year})` : ''}
+              </Link>
+            ) : null}
           </Field>
-          <Field label="Plate number">{trip.userVehicle.plateNumber}</Field>
+          <Field label={trip.isReturnTrip ? 'Trip type' : 'Plate number'}>
+            {trip.isReturnTrip ? 'Business Return Carpool' : (trip.userVehicle?.plateNumber ?? '—')}
+          </Field>
           <Field label="Seats available">{trip.availableSeats}</Field>
           <Field label="Price per seat">
             <span className="font-mono font-semibold text-ink">

@@ -213,6 +213,100 @@ export interface PagedResponse<T> {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
+export interface AdminProviderBusinessSummary {
+  business: {
+    id: string;
+    businessName: string;
+    slug: string;
+    verificationStatus: string;
+    createdAt: string;
+    owner: { id: string; name: string; email: string; phone?: string | null; createdAt: string };
+    showrooms: Array<{ id: string; name: string; city: string; contactNumber?: string | null }>;
+  };
+  members: {
+    businessAdmins: number;
+    managers: number;
+    drivers: number;
+    verifiedDrivers: number;
+    total: number;
+  };
+  fleet: {
+    total: number;
+    approved: number;
+    pendingReview: number;
+  };
+  bookings: {
+    total: number;
+    inProgress: number;
+    completed: number;
+    cancelled: number;
+    rejected: number;
+  };
+  recentActivity: Array<{
+    id: string;
+    actionType: string;
+    entityType: string;
+    entityId: string;
+    metadata?: any;
+    createdAt: string;
+    adminUser: { id: string; name: string; email: string };
+  }>;
+}
+
+export interface AdminTrackingLookupResult {
+  booking: {
+    id: string;
+    status: string;
+    requestedFromDate: string;
+    requestedToDate: string;
+    startedAt: string | null;
+    completedAt: string | null;
+  };
+  isCurrentlyActive: boolean;
+  vehicle: {
+    id: string;
+    title: string;
+    make: string;
+    model: string;
+    year: number;
+    slug: string;
+  };
+  driver: {
+    id: string;
+    name: string;
+    phone: string | null;
+    licenseCategory: string | null;
+    licenseNumber: string | null;
+    avatarUrl: string | null;
+  } | null;
+  business: {
+    id: string;
+    businessName: string;
+    slug: string;
+  };
+  customer: {
+    id: string;
+    name: string;
+    phone: string | null;
+  };
+  lastLocation: {
+    lat: number;
+    lng: number;
+    headingDeg: number | null;
+    speedKmh: number | null;
+    timestamp: string;
+  } | null;
+  lastSeenText: string;
+  recentRouteFixes: Array<{
+    lat: number;
+    lng: number;
+    headingDeg: number | null;
+    speedKmh: number | null;
+    accuracyM: number | null;
+    timestamp: string;
+  }>;
+}
+
 // ── API client ─────────────────────────────────────────────────────────────
 
 export const adminApi = {
@@ -220,12 +314,20 @@ export const adminApi = {
     apiClient.get<ApiResponse<AdminOverview>>('/admin/overview').then((r) => r.data.data),
 
   // Providers
+  getAllProviders: (page = 1, limit = 20, status?: string, search?: string) =>
+    apiClient
+      .get<PagedResponse<AdminProviderSummary>>('/admin/providers', {
+        params: { page, limit, ...(status && { status }), ...(search && { search }) },
+      })
+      .then((r) => r.data),
   getPendingProviders: (page = 1, limit = 20) =>
     apiClient
       .get<PagedResponse<AdminProviderSummary>>('/admin/providers/pending', { params: { page, limit } })
       .then((r) => r.data),
   getProviderDetail: (id: string) =>
     apiClient.get<ApiResponse<AdminProviderDetail>>(`/admin/providers/${id}`).then((r) => r.data.data),
+  getProviderSummary: (id: string) =>
+    apiClient.get<ApiResponse<AdminProviderBusinessSummary>>(`/admin/providers/${id}/summary`).then((r) => r.data.data),
   approveProvider: (id: string, note?: string) =>
     apiClient.patch<ApiResponse<AdminProviderSummary>>(`/admin/providers/${id}/approve`, { note }).then((r) => r.data.data),
   rejectProvider: (id: string, reason: string) =>
@@ -289,7 +391,7 @@ export const adminApi = {
   reactivateUserVehicle: (id: string) =>
     apiClient.patch<ApiResponse<AdminUserVehicle>>(`/admin/user-vehicles/${id}/reactivate`).then((r) => r.data.data),
 
-  // Audit logs
+  // Audit logs & Reviews (Super Admin deletion, A45)
   getAuditLogs: (params: {
     entityType?: string;
     entityId?: string;
@@ -297,6 +399,24 @@ export const adminApi = {
     page?: number;
     limit?: number;
   }) => apiClient.get<PagedResponse<AuditLog>>('/admin/audit-logs', { params }).then((r) => r.data),
+  deleteAuditLog: (id: string, reason: string) =>
+    apiClient
+      .delete<ApiResponse<{ success: boolean; deletedLogId: string }>>(`/admin/audit-logs/${id}`, {
+        data: { reason },
+      })
+      .then((r) => r.data.data),
+  deleteReview: (id: string, reason: string) =>
+    apiClient
+      .delete<ApiResponse<{ success: boolean; deletedReviewId: string }>>(`/admin/reviews/${id}`, {
+        data: { reason },
+      })
+      .then((r) => r.data.data),
+
+  // Tracking lookup (Single vehicle/driver lookup, A39)
+  lookupTracking: (params: { vehicleId?: string; driverId?: string; bookingId?: string; query?: string }) =>
+    apiClient
+      .get<ApiResponse<AdminTrackingLookupResult>>('/admin/tracking/lookup', { params })
+      .then((r) => r.data.data),
 
   // Settings
   getSettings: () =>

@@ -29,6 +29,15 @@ export function useAdminProviderDetail(id: string) {
   });
 }
 
+export function useAdminProviderSummary(id: string) {
+  return useQuery({
+    queryKey: ['admin', 'providers', 'summary', id],
+    queryFn: () => adminApi.getProviderSummary(id),
+    staleTime: 30_000,
+    enabled: !!id,
+  });
+}
+
 export function useApproveProvider() {
   const qc = useQueryClient();
   return useMutation({
@@ -269,6 +278,52 @@ export function useAuditLogs(params: {
     queryKey: ['admin', 'audit-logs', params],
     queryFn: () => adminApi.getAuditLogs({ ...params, limit: 50 }),
     staleTime: 30_000,
+  });
+}
+
+// ── Tracking lookup (Phase 5, A39) ────────────────────────────────────────
+
+export function useAdminTrackingLookup(params: {
+  vehicleId?: string;
+  driverId?: string;
+  bookingId?: string;
+  query?: string;
+}) {
+  const hasParam = !!(params.vehicleId || params.driverId || params.bookingId || params.query);
+  return useQuery({
+    queryKey: ['admin', 'tracking', 'lookup', params],
+    queryFn: () => adminApi.lookupTracking(params),
+    enabled: hasParam,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+}
+
+// ── Super Admin deletions (Phase 5, A33, A45) ──────────────────────────────
+
+export function useDeleteAuditLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      adminApi.deleteAuditLog(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'audit-logs'] });
+      toast.success('Audit log deleted and recorded in permanent log');
+    },
+    onError: () => toast.error('Failed to delete audit log (requires Super Admin)'),
+  });
+}
+
+export function useDeleteReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      adminApi.deleteReview(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin'] });
+      toast.success('Review deleted and recorded in permanent log');
+    },
+    onError: () => toast.error('Failed to delete review (requires Super Admin)'),
   });
 }
 
