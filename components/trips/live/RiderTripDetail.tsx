@@ -9,6 +9,7 @@ import { StatusBadge } from '../../common/StatusBadge';
 import { Button, Card, ConfirmDialog, ErrorState, WhatsAppButton } from '../../ui';
 import { formatTripDateTime } from '../../../lib/utils/datetime';
 import { RiderLiveView } from './RiderLiveView';
+import { InquiryVehicleLine } from './InquiryVehicleLine';
 
 interface RiderTripDetailProps {
   backHref: string; // e.g. '/dashboard/trip-inquiries'
@@ -95,11 +96,7 @@ export function RiderTripDetail({ backHref, reviewsHref }: RiderTripDetailProps)
             Driver & vehicle
           </p>
           <p className="font-medium text-ink">{inquiry.trip.postedBy.name}</p>
-          <p className="text-text-muted">
-            {inquiry.trip.userVehicle.make} {inquiry.trip.userVehicle.model}
-            {inquiry.trip.userVehicle.year ? ` (${inquiry.trip.userVehicle.year})` : ''} ·{' '}
-            {inquiry.trip.userVehicle.plateNumber}
-          </p>
+          <InquiryVehicleLine trip={inquiry.trip} />
           {driverPhone && <WhatsAppButton phone={driverPhone} />}
           <p className="text-xs text-text-faint">
             {inquiry.trip.status === 'CANCELLED'

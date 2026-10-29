@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { fetchProviderBySlug, fetchDistinctCities, fetchAllProviders } from '../../../../lib/api/server';
 import { ProviderVehiclesSection } from '../../../../components/providers/ProviderVehiclesSection';
 import { ProviderCard } from '../../../../components/providers/ProviderCard';
-import { RatingSummaryBadge } from '../../../../components/common/RatingSummaryBadge';
-import { ReviewsList } from '../../../../components/common/ReviewsList';
 import { parsePageParam, withPageParam } from '../../../../lib/utils/pagination';
 import { Pagination } from '../../../../components/ui';
 
@@ -244,7 +242,6 @@ export default async function ProviderDetailOrCityPage({ params, searchParams }:
                   Featured
                 </span>
               )}
-              <RatingSummaryBadge subjectType="PROVIDER" subjectId={provider.id} size="sm" />
             </div>
 
             {provider.businessDescription && (
@@ -345,12 +342,9 @@ export default async function ProviderDetailOrCityPage({ params, searchParams }:
       </div>
 
       {/* Vehicle listings — client component for filtering */}
+      {/* No business rating/reviews here — customers rate the car and the
+          driver, never the business (A18). Car ratings live on each listing. */}
       <ProviderVehiclesSection providerSlug={params.slug} providerName={provider.businessName} />
-
-      {/* Reviews */}
-      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
-        <ReviewsList subjectType="PROVIDER" subjectId={provider.id} title="Reviews" />
-      </div>
     </div>
   );
 }

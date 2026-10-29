@@ -310,6 +310,9 @@ export default async function HomePage() {
             <Link href="/terms" className="transition-colors hover:text-brand-700">
               Terms
             </Link>
+            <Link href="/delete-account" className="transition-colors hover:text-brand-700">
+              Delete account
+            </Link>
             <Link href="/login" className="transition-colors hover:text-brand-700">
               Sign in
             </Link>

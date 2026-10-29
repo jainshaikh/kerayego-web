@@ -1,5 +1,11 @@
 import { apiClient } from './client';
-import type { ApiResponse, Market } from '../../types/api.types';
+import type {
+  AdminDriverDetail,
+  AdminDriverListItem,
+  ApiResponse,
+  Market,
+} from '../../types/api.types';
+import type { DriverVerificationStatus } from '../../types/enums';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -169,7 +175,12 @@ export interface AdminTripDetail {
   createdAt: string;
   updatedAt: string;
   postedBy: { id: string; name: string; email: string; phone?: string | null };
-  userVehicle: { id: string; make: string; model: string; year?: number | null; color?: string | null; plateNumber: string; status: string; country: Market };
+  // Mirrors TripsService TRIP_DETAIL_SELECT: a return trip (A48) runs in a
+  // business's fleet car, so userVehicle is null and fleetVehicle/providerProfile are set.
+  userVehicle: { id: string; make: string; model: string; year?: number | null; color?: string | null; plateNumber: string; status: string; country: Market } | null;
+  isReturnTrip?: boolean;
+  fleetVehicle?: { id: string; title: string; make: string; model: string; year: number; seatingCapacity: number; status: string } | null;
+  providerProfile?: { id: string; businessName: string; slug: string } | null;
 }
 
 export interface AdminUserVehicle {
@@ -391,6 +402,22 @@ export const adminApi = {
   reactivateUserVehicle: (id: string) =>
     apiClient.patch<ApiResponse<AdminUserVehicle>>(`/admin/user-vehicles/${id}/reactivate`).then((r) => r.data.data),
 
+  // Driver verification (provider drivers' identity + licence). Backend defaults
+  // `status` to PENDING_REVIEW, oldest submission first. The detail's document
+  // `fileUrl`s are short-lived signed links — see useAdminDriverDetail.
+  getDrivers: (page = 1, limit = 20, status?: DriverVerificationStatus) =>
+    apiClient
+      .get<PagedResponse<AdminDriverListItem>>('/admin/drivers', {
+        params: { page, limit, ...(status && { status }) },
+      })
+      .then((r) => r.data),
+  getDriverDetail: (userId: string) =>
+    apiClient.get<ApiResponse<AdminDriverDetail>>(`/admin/drivers/${userId}`).then((r) => r.data.data),
+  approveDriver: (userId: string) =>
+    apiClient.patch<ApiResponse<unknown>>(`/admin/drivers/${userId}/approve`).then((r) => r.data.data),
+  rejectDriver: (userId: string, reason: string) =>
+    apiClient.patch<ApiResponse<unknown>>(`/admin/drivers/${userId}/reject`, { reason }).then((r) => r.data.data),
+
   // Audit logs & Reviews (Super Admin deletion, A45)
   getAuditLogs: (params: {
     entityType?: string;
@@ -399,12 +426,6 @@ export const adminApi = {
     page?: number;
     limit?: number;
   }) => apiClient.get<PagedResponse<AuditLog>>('/admin/audit-logs', { params }).then((r) => r.data),
-  deleteAuditLog: (id: string, reason: string) =>
-    apiClient
-      .delete<ApiResponse<{ success: boolean; deletedLogId: string }>>(`/admin/audit-logs/${id}`, {
-        data: { reason },
-      })
-      .then((r) => r.data.data),
   deleteReview: (id: string, reason: string) =>
     apiClient
       .delete<ApiResponse<{ success: boolean; deletedReviewId: string }>>(`/admin/reviews/${id}`, {

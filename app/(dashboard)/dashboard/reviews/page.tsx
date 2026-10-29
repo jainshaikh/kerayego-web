@@ -8,8 +8,8 @@ export default function DashboardReviewsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-ink">Rate your rides</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Rate completed rentals and departed trips — vehicle and provider/driver ratings are shown
-          publicly; ratings you receive from providers/drivers are for our own records only.
+          Rate completed rentals and departed trips — your car and driver ratings are shown
+          publicly; ratings you receive from drivers are for our own records only.
         </p>
       </div>
       <EligibleReviewsList />

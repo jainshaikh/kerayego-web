@@ -15,6 +15,10 @@ interface ConfirmDialogProps {
   /** When set, a reason textarea is shown and required before confirming (e.g. reject/suspend). */
   requireReason?: boolean;
   reasonLabel?: string;
+  /** Minimum trimmed reason length (default 1) — match the backend DTO. */
+  minReasonLength?: number;
+  /** Maximum reason length; also caps the textarea. */
+  maxReasonLength?: number;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
@@ -31,6 +35,8 @@ export function ConfirmDialog({
   description,
   requireReason,
   reasonLabel = 'Reason',
+  minReasonLength = 1,
+  maxReasonLength,
   confirmLabel = 'Confirm',
   cancelLabel = 'Keep it',
   destructive = true,
@@ -38,7 +44,17 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   const [reason, setReason] = useState('');
-  const canConfirm = !requireReason || reason.trim().length > 0;
+  const reasonLength = reason.trim().length;
+  const reasonTooShort = reasonLength < minReasonLength;
+  const reasonTooLong = maxReasonLength !== undefined && reasonLength > maxReasonLength;
+  const canConfirm = !requireReason || (!reasonTooShort && !reasonTooLong);
+  // Only nag once they've started typing; the disabled button covers the empty case.
+  const reasonError =
+    requireReason && reasonLength > 0 && reasonTooShort
+      ? `At least ${minReasonLength} characters`
+      : reasonTooLong
+        ? `At most ${maxReasonLength} characters`
+        : undefined;
 
   return (
     <AlertDialog.Root
@@ -76,6 +92,13 @@ export function ConfirmDialog({
                   rows={3}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
+                  maxLength={maxReasonLength}
+                  error={reasonError}
+                  helper={
+                    minReasonLength > 1 || maxReasonLength
+                      ? `${reasonLength}${maxReasonLength ? ` / ${maxReasonLength}` : ''} characters${minReasonLength > 1 ? ` (min ${minReasonLength})` : ''}`
+                      : undefined
+                  }
                   placeholder="Explain what needs to change…"
                 />
               </div>

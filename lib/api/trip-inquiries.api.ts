@@ -31,14 +31,68 @@ export interface TripInquiryTrip {
   contactNumber: string;
   postedByUserId: string;
   postedBy: { id: string; name: string; email: string; phone: string | null };
+  // A normal trip runs in the poster's own car; a return trip (A48) runs in a
+  // business's fleet car instead, so userVehicle is null and fleetVehicle +
+  // providerProfile are set. Mirrors the backend's INQUIRY_SELECT.
   userVehicle: {
     make: string;
     model: string;
     year: number | null;
     color: string | null;
     plateNumber: string;
+    country?: string;
     images: { url: string; altText: string | null }[];
-  };
+  } | null;
+  isReturnTrip: boolean;
+  fleetVehicle: TripInquiryFleetVehicle | null;
+  providerProfile: { id: string; businessName: string } | null;
+}
+
+// Mirrors the backend's TRIP_FLEET_VEHICLE_DETAIL_SELECT (trip-fleet-vehicle.select.ts).
+export interface TripInquiryFleetVehicle {
+  id: string;
+  title: string;
+  make: string;
+  model: string;
+  year: number;
+  seatingCapacity: number;
+  status: string;
+  images: { id: string; url: string; altText: string | null; sortOrder: number }[];
+}
+
+// The car a trip-inquiry's trip runs in, whichever kind it is — for display only.
+export function inquiryTripVehicle(trip: TripInquiryTrip): {
+  make: string;
+  model: string;
+  year: number | null;
+  color: string | null;
+  plateNumber: string | null;
+  imageUrl: string | null;
+  businessName: string | null;
+} | null {
+  if (trip.isReturnTrip && trip.fleetVehicle) {
+    return {
+      make: trip.fleetVehicle.make,
+      model: trip.fleetVehicle.model,
+      year: trip.fleetVehicle.year,
+      color: null,
+      plateNumber: null,
+      imageUrl: trip.fleetVehicle.images[0]?.url ?? null,
+      businessName: trip.providerProfile?.businessName ?? null,
+    };
+  }
+  if (trip.userVehicle) {
+    return {
+      make: trip.userVehicle.make,
+      model: trip.userVehicle.model,
+      year: trip.userVehicle.year,
+      color: trip.userVehicle.color,
+      plateNumber: trip.userVehicle.plateNumber,
+      imageUrl: trip.userVehicle.images[0]?.url ?? null,
+      businessName: null,
+    };
+  }
+  return null;
 }
 
 export interface TripInquiry {

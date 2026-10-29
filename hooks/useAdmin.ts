@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { adminApi } from '../lib/api/admin.api';
+import type { DriverVerificationStatus } from '../types/enums';
 
 export function useAdminOverview() {
   return useQuery({
@@ -222,6 +223,68 @@ export function useReactivateUserVehicle() {
   });
 }
 
+// ── Drivers (provider drivers' identity + licence verification) ──────────
+
+/** The backend's error envelope is `{ error: { message, details? } }`; a DTO
+ * validation failure has message "Validation failed" and the field errors in
+ * `details`, so surface those instead. */
+export function driverErrorMessage(error: unknown, fallback: string): string {
+  const body = (error as { response?: { data?: { error?: { message?: string; details?: unknown } } } })
+    ?.response?.data?.error;
+  if (Array.isArray(body?.details) && body.details.length > 0) {
+    return body.details.map(String).join(' · ');
+  }
+  return body?.message ?? fallback;
+}
+
+export function useAdminDrivers(page = 1, status: DriverVerificationStatus) {
+  return useQuery({
+    queryKey: ['admin', 'drivers', page, status],
+    queryFn: () => adminApi.getDrivers(page, 20, status),
+    staleTime: 30_000,
+  });
+}
+
+/** Document `fileUrl`s are ~10-minute signed links, so this is never served
+ * from cache: always refetched on mount/focus, dropped as soon as the page
+ * unmounts, and refetched every 5 minutes so links stay openable. */
+export function useAdminDriverDetail(userId: string) {
+  return useQuery({
+    queryKey: ['admin', 'drivers', 'detail', userId],
+    queryFn: () => adminApi.getDriverDetail(userId),
+    enabled: !!userId,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+export function useApproveDriver() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => adminApi.approveDriver(userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'drivers'] });
+      toast.success('Driver verified');
+    },
+    onError: (error: unknown) => toast.error(driverErrorMessage(error, 'Failed to approve driver')),
+  });
+}
+
+export function useRejectDriver() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
+      adminApi.rejectDriver(userId, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'drivers'] });
+      toast.success('Driver verification rejected');
+    },
+    onError: (error: unknown) => toast.error(driverErrorMessage(error, 'Failed to reject driver')),
+  });
+}
+
 // ── Users ─────────────────────────────────────────────────────────────────
 
 export function useAdminUsers(page = 1, role?: string, status?: string) {
@@ -300,19 +363,8 @@ export function useAdminTrackingLookup(params: {
 }
 
 // ── Super Admin deletions (Phase 5, A33, A45) ──────────────────────────────
-
-export function useDeleteAuditLog() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      adminApi.deleteAuditLog(id, reason),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'audit-logs'] });
-      toast.success('Audit log deleted and recorded in permanent log');
-    },
-    onError: () => toast.error('Failed to delete audit log (requires Super Admin)'),
-  });
-}
+// The admin audit log itself is permanent — DELETE /admin/audit-logs/:id always
+// returns 403 (A45), so there is deliberately no delete hook for it.
 
 export function useDeleteReview() {
   const qc = useQueryClient();

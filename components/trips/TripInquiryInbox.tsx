@@ -5,11 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Inbox } from 'lucide-react';
 import { useTripInquiryInbox, useUpdateTripInquiryStatus } from '../../hooks/useTripInquiries';
-import type { TripInquiry } from '../../lib/api/trip-inquiries.api';
+import { inquiryTripVehicle, type TripInquiry } from '../../lib/api/trip-inquiries.api';
 import { Button, Card, EmptyState, Modal, Pagination, Textarea } from '../ui';
 import { StatusBadge } from '../common/StatusBadge';
 import { cn } from '../../lib/utils/cn';
 import { formatTripDateTime } from '../../lib/utils/datetime';
+import { CancelSeatModal, canPosterCancelSeat } from './CancelSeatModal';
 
 function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -30,6 +31,7 @@ export function TripInquiryInbox({ tripBasePath }: TripInquiryInboxProps) {
   const updateStatus = useUpdateTripInquiryStatus();
   const [rejectModal, setRejectModal] = useState<{ inquiryId: string } | null>(null);
   const [rejectNote, setRejectNote] = useState('');
+  const [cancelSeat, setCancelSeat] = useState<TripInquiry | null>(null);
 
   const inquiries = data?.data ?? [];
   const meta = data?.meta;
@@ -67,6 +69,7 @@ export function TripInquiryInbox({ tripBasePath }: TripInquiryInboxProps) {
                 setRejectNote('');
                 setRejectModal({ inquiryId: inquiry.id });
               }}
+              onCancelSeat={() => setCancelSeat(inquiry)}
               acting={updateStatus.isPending}
             />
           ))}
@@ -93,10 +96,14 @@ export function TripInquiryInbox({ tripBasePath }: TripInquiryInboxProps) {
               loading={updateStatus.isPending}
               onClick={async () => {
                 if (!rejectModal) return;
-                await updateStatus.mutateAsync({
-                  id: rejectModal.inquiryId,
-                  data: { newStatus: 'REJECTED', note: rejectNote || undefined },
-                });
+                try {
+                  await updateStatus.mutateAsync({
+                    id: rejectModal.inquiryId,
+                    data: { newStatus: 'REJECTED', note: rejectNote || undefined },
+                  });
+                } catch {
+                  return; // the hook already toasts the backend's message
+                }
                 setRejectModal(null);
               }}
             >
@@ -113,6 +120,8 @@ export function TripInquiryInbox({ tripBasePath }: TripInquiryInboxProps) {
           className="resize-none"
         />
       </Modal>
+
+      <CancelSeatModal inquiry={cancelSeat} onClose={() => setCancelSeat(null)} />
     </div>
   );
 }
@@ -122,23 +131,29 @@ function TripInquiryRow({
   tripBasePath,
   onAccept,
   onDecline,
+  onCancelSeat,
   acting,
 }: {
   inquiry: TripInquiry;
   tripBasePath: string;
   onAccept: () => void;
   onDecline: () => void;
+  onCancelSeat: () => void;
   acting: boolean;
 }) {
-  const vehicle = inquiry.trip.userVehicle;
-  const cover = vehicle.images[0];
-  const vehicleLabel = [
-    `${titleCase(vehicle.make)} ${titleCase(vehicle.model)}`,
-    vehicle.year ? `${vehicle.year}` : null,
-    vehicle.color ? titleCase(vehicle.color) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // A return trip (A48) runs in a business's fleet car — userVehicle is null.
+  const vehicle = inquiryTripVehicle(inquiry.trip);
+  const vehicleLabel = vehicle
+    ? [
+        `${titleCase(vehicle.make)} ${titleCase(vehicle.model)}`,
+        vehicle.year ? `${vehicle.year}` : null,
+        vehicle.color ? titleCase(vehicle.color) : null,
+        vehicle.plateNumber,
+        vehicle.businessName,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : 'Vehicle';
 
   return (
     <Card className="ease-spring transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-100 hover:shadow-sm">
@@ -147,8 +162,8 @@ function TripInquiryRow({
             several trips/vehicles posted at once needs a photo to tell one
             request from another at a glance, not just the route name. */}
         <div className="relative h-14 w-20 flex-shrink-0 overflow-hidden rounded-media border border-border-subtle bg-page">
-          {cover ? (
-            <Image src={cover.url} alt={cover.altText ?? vehicleLabel} fill className="object-cover" sizes="80px" />
+          {vehicle?.imageUrl ? (
+            <Image src={vehicle.imageUrl} alt={vehicleLabel} fill className="object-cover" sizes="80px" />
           ) : null}
         </div>
 
@@ -164,7 +179,7 @@ function TripInquiryRow({
                 {titleCase(inquiry.trip.destinationCity)}
               </Link>
               <p className="mt-0.5 text-xs font-medium text-text-muted">
-                {vehicleLabel} · {vehicle.plateNumber}
+                {vehicleLabel}
               </p>
               <p className="mt-1 text-xs text-text-muted">
                 {inquiry.user.name} · {inquiry.requestedSeats} seat{inquiry.requestedSeats !== 1 ? 's' : ''}
@@ -206,6 +221,14 @@ function TripInquiryRow({
               </Button>
               <Button size="sm" variant="danger-outline" onClick={onDecline}>
                 Decline
+              </Button>
+            </div>
+          )}
+
+          {canPosterCancelSeat(inquiry) && (
+            <div className="mt-3.5 flex gap-2.5">
+              <Button size="sm" variant="danger-outline" disabled={acting} onClick={onCancelSeat}>
+                Cancel seat
               </Button>
             </div>
           )}

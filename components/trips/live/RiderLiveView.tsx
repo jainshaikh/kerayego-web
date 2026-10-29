@@ -7,6 +7,7 @@ import { useRiderLiveRoute } from './useRiderLiveRoute';
 import { useRiderTripActions } from './useRiderTripActions';
 import { LiveTripMap, type LiveTripMapStop } from './LiveTripMap';
 import { ChatModal } from './ChatModal';
+import { InquiryVehicleLine } from './InquiryVehicleLine';
 import { Button, Card, ConfirmDialog, WhatsAppButton } from '../../ui';
 import { haversineDistanceMeters, formatDistanceShort } from '../../../lib/utils/geo-distance';
 
@@ -68,11 +69,7 @@ export function RiderLiveView({ inquiry }: RiderLiveViewProps) {
           Driver & vehicle
         </p>
         <p className="font-medium text-ink">{inquiry.trip.postedBy.name}</p>
-        <p className="text-text-muted">
-          {inquiry.trip.userVehicle.make} {inquiry.trip.userVehicle.model}
-          {inquiry.trip.userVehicle.year ? ` (${inquiry.trip.userVehicle.year})` : ''} ·{' '}
-          {inquiry.trip.userVehicle.plateNumber}
-        </p>
+        <InquiryVehicleLine trip={inquiry.trip} />
         {(inquiry.trip.postedBy.phone ?? inquiry.trip.contactNumber) && (
           <WhatsAppButton phone={inquiry.trip.postedBy.phone ?? inquiry.trip.contactNumber} variant="text" />
         )}

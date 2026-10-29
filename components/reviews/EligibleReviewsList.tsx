@@ -3,13 +3,51 @@
 import { useState } from 'react';
 import { Star } from 'lucide-react';
 import { useMyEligibleReviews, useCreateReview } from '../../hooks/useReviews';
-import type { ReviewContext, ReviewSubjectType } from '../../lib/api/reviews.api';
+import type {
+  EligibleBooking,
+  EligibleTrip,
+  ReviewContext,
+  ReviewSubjectType,
+} from '../../lib/api/reviews.api';
 import { Button, Card, EmptyState, Modal, RatingStars, Textarea } from '../ui';
 
 interface RateTarget {
   subjectType: ReviewSubjectType;
   subjectId: string;
   label: string;
+}
+
+// After a rental the customer rates the car and, when the booking had an
+// assigned driver, that driver — never the business (A18, A24). Mirrors
+// reviews.service.ts createForBooking()'s allowed entries for a customer.
+function rentalTargets(b: EligibleBooking): RateTarget[] {
+  const targets: RateTarget[] = [];
+  if (b.vehicle) targets.push({ subjectType: 'VEHICLE', subjectId: b.vehicle.id, label: 'The car' });
+  if (b.assignedDriverId) {
+    const name = b.assignedDriver?.driverProfile?.fullName ?? b.assignedDriver?.name;
+    targets.push({
+      subjectType: 'USER',
+      subjectId: b.assignedDriverId,
+      label: name ? `The driver (${name})` : 'The driver',
+    });
+  }
+  return targets;
+}
+
+// A rider rates the car and the driver. A normal trip's car is the poster's own
+// (USER_VEHICLE); a return trip runs in a business's fleet car (VEHICLE) — A48.
+// Mirrors reviews.service.ts createForTrip()'s allowed entries for a rider.
+function riderTripTargets(t: EligibleTrip): RateTarget[] {
+  const targets: RateTarget[] = [];
+  if (t.trip.isReturnTrip && t.trip.fleetVehicleId) {
+    targets.push({ subjectType: 'VEHICLE', subjectId: t.trip.fleetVehicleId, label: 'The car' });
+  } else if (t.trip.userVehicleId) {
+    targets.push({ subjectType: 'USER_VEHICLE', subjectId: t.trip.userVehicleId, label: 'The car' });
+  }
+  if (t.trip.postedByUserId) {
+    targets.push({ subjectType: 'USER', subjectId: t.trip.postedByUserId, label: 'The driver' });
+  }
+  return targets;
 }
 
 interface PendingRating {
@@ -35,7 +73,11 @@ function RateModal({ pending, onClose }: { pending: PendingRating | null; onClos
       rating: ratings[t.subjectId] ?? 0,
       comment: comments[t.subjectId]?.trim() || undefined,
     }));
-    await createReview.mutateAsync({ context: pending.context, contextId: pending.contextId, entries });
+    try {
+      await createReview.mutateAsync({ context: pending.context, contextId: pending.contextId, entries });
+    } catch {
+      return; // useCreateReview already toasts the backend's message
+    }
     setRatings({});
     setComments({});
     onClose();
@@ -114,10 +156,7 @@ export function EligibleReviewsList() {
                   context: 'BOOKING_REQUEST',
                   contextId: b.id,
                   title: `Rate: ${b.vehicle?.title ?? 'your rental'}`,
-                  targets: [
-                    { subjectType: 'VEHICLE', subjectId: b.vehicle!.id, label: 'The vehicle' },
-                    { subjectType: 'PROVIDER', subjectId: b.providerProfileId!, label: 'The provider' },
-                  ],
+                  targets: rentalTargets(b),
                 })
               }
             />
@@ -155,10 +194,7 @@ export function EligibleReviewsList() {
                   context: 'TRIP_INQUIRY',
                   contextId: t.id,
                   title: `Rate your trip: ${t.trip.originCity} → ${t.trip.destinationCity}`,
-                  targets: [
-                    { subjectType: 'USER_VEHICLE', subjectId: t.trip.userVehicleId!, label: 'The vehicle' },
-                    { subjectType: 'USER', subjectId: t.trip.postedByUserId!, label: 'The driver' },
-                  ],
+                  targets: riderTripTargets(t),
                 })
               }
             />

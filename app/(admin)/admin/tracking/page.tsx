@@ -203,7 +203,7 @@ export default function AdminTrackingLookupPage() {
       ) : activeQuery ? (
         <Card className="p-8 text-center text-text-faint">
           <AlertTriangle className="h-8 w-8 mx-auto text-amber-500 mb-2" />
-          <p className="font-medium">No location or booking records found for "{activeQuery}"</p>
+          <p className="font-medium">No location or booking records found for &ldquo;{activeQuery}&rdquo;</p>
           <p className="text-xs mt-1">Make sure the vehicle or driver has been assigned to a booking with GPS tracking.</p>
         </Card>
       ) : (

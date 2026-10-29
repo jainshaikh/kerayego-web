@@ -95,10 +95,23 @@ export default function AdminTripsPage() {
                 </span>
               </td>
               <td className="px-4 py-3 text-xs text-text-muted">
-                {trip.userVehicle.make} {trip.userVehicle.model}
-                <span className="ml-1 font-mono uppercase text-text-faint">
-                  {trip.userVehicle.plateNumber}
-                </span>
+                {trip.isReturnTrip && trip.fleetVehicle ? (
+                  <>
+                    {trip.fleetVehicle.make} {trip.fleetVehicle.model}
+                    <span className="ml-1 text-text-faint">
+                      · {trip.providerProfile?.businessName ?? 'Business car'}
+                    </span>
+                  </>
+                ) : trip.userVehicle ? (
+                  <>
+                    {trip.userVehicle.make} {trip.userVehicle.model}
+                    <span className="ml-1 font-mono uppercase text-text-faint">
+                      {trip.userVehicle.plateNumber}
+                    </span>
+                  </>
+                ) : (
+                  '—'
+                )}
               </td>
               <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-text-muted">
                 {formatTripDateTime(trip.departureAt)} PKT

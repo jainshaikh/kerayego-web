@@ -2,6 +2,8 @@ import apiClient from './client';
 import type { ApiResponse, PaginationMeta } from '../../types/api.types';
 
 // Mirrors the backend's EntityType — a review's subject can be any of these.
+// PROVIDER is kept only so legacy business reviews can still be read; the backend
+// no longer accepts new business reviews (A18) — customers rate the car + driver.
 export type ReviewSubjectType = 'VEHICLE' | 'USER_VEHICLE' | 'PROVIDER' | 'USER';
 export type ReviewContext = 'BOOKING_REQUEST' | 'TRIP_INQUIRY';
 
@@ -36,11 +38,20 @@ export interface RatingSummary {
   average: number | null;
 }
 
+// Mirrors reviews.service.ts getMyEligible(). bookingsAsCustomer rows carry the
+// vehicle + the assigned driver (null when none was assigned); bookingsAsProvider
+// rows carry the customer.
 export interface EligibleBooking {
   id: string;
   updatedAt?: string;
   providerProfileId?: string;
   vehicle?: { id: string; title: string; slug: string };
+  assignedDriverId?: string | null;
+  assignedDriver?: {
+    id: string;
+    name: string;
+    driverProfile: { fullName: string } | null;
+  } | null;
   user?: { id: string; name: string };
 }
 
@@ -51,7 +62,11 @@ export interface EligibleTrip {
     originCity: string;
     destinationCity: string;
     departureAt?: string;
-    userVehicleId?: string;
+    // A normal trip runs in the poster's own car (userVehicleId); a return trip
+    // runs in a business's fleet car (fleetVehicleId, userVehicleId null) — A48.
+    userVehicleId?: string | null;
+    fleetVehicleId?: string | null;
+    isReturnTrip?: boolean;
     postedByUserId?: string;
   };
   user?: { id: string; name: string };

@@ -290,12 +290,6 @@ export default async function VehicleDetailPage({ params }: PageProps) {
                   <BadgeCheck className="h-3.5 w-3.5" />
                   Verified provider — view all listings
                 </p>
-                <RatingSummaryBadge
-                  subjectType="PROVIDER"
-                  subjectId={vehicle.providerProfile.id}
-                  size="sm"
-                  className="mt-1"
-                />
               </div>
             </Link>
           </Card>

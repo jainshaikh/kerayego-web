@@ -134,14 +134,18 @@ export function MyTripsList({ basePath, newHref }: MyTripsListProps) {
         open={!!confirmCancelId}
         onOpenChange={(open) => !open && setConfirmCancelId(null)}
         title="Cancel this trip?"
-        description="Riders will no longer be able to find or contact you for this trip."
+        description="The trip will be taken down and no one will be able to request a seat on it. A trip with pending or booked seats can't be cancelled — open it and cancel or decline each seat first."
         confirmLabel="Cancel trip"
         cancelLabel="Keep it"
         destructive
         loading={cancelTrip.isPending}
         onConfirm={async () => {
           if (!confirmCancelId) return;
-          await cancelTrip.mutateAsync({ id: confirmCancelId });
+          try {
+            await cancelTrip.mutateAsync({ id: confirmCancelId });
+          } catch {
+            // useCancelTrip toasts the backend's message (e.g. the A49 seat refusal).
+          }
           setConfirmCancelId(null);
         }}
       />

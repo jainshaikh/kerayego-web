@@ -10,6 +10,7 @@ const FOOTER_LINKS = [
   { href: '/contact', label: 'Contact' },
   { href: '/privacy', label: 'Privacy Policy' },
   { href: '/terms', label: 'Terms & Conditions' },
+  { href: '/delete-account', label: 'Delete account' },
 ];
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {

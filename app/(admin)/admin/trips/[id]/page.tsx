@@ -121,22 +121,62 @@ export default function AdminTripDetailPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Vehicle</h2>
-            <StatusBadge status={trip.userVehicle.status} size="sm" />
-          </div>
-          <p className="font-medium text-slate-800">
-            {trip.userVehicle.make} {trip.userVehicle.model}{trip.userVehicle.year ? ` (${trip.userVehicle.year})` : ''}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
-            {trip.userVehicle.color && `${trip.userVehicle.color} · `}Plate {trip.userVehicle.plateNumber}
-          </p>
-          <Link
-            href={`/admin/user-vehicles/${trip.userVehicle.id}`}
-            className="inline-block mt-3 text-sm font-semibold text-primary hover:underline"
-          >
-            View vehicle & documents →
-          </Link>
+          {trip.isReturnTrip && trip.fleetVehicle ? (
+            // Return trip (A48): a business's fleet car, userVehicle is null.
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Vehicle (business return trip)</h2>
+                <StatusBadge status={trip.fleetVehicle.status} size="sm" />
+              </div>
+              <p className="font-medium text-slate-800">
+                {trip.fleetVehicle.make} {trip.fleetVehicle.model}{trip.fleetVehicle.year ? ` (${trip.fleetVehicle.year})` : ''}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                {trip.fleetVehicle.title}
+                {trip.providerProfile ? ` · ${trip.providerProfile.businessName}` : ''}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-4">
+                <Link
+                  href={`/admin/vehicles/${trip.fleetVehicle.id}`}
+                  className="inline-block text-sm font-semibold text-primary hover:underline"
+                >
+                  View fleet vehicle →
+                </Link>
+                {trip.providerProfile && (
+                  <Link
+                    href={`/admin/providers/${trip.providerProfile.id}`}
+                    className="inline-block text-sm font-semibold text-primary hover:underline"
+                  >
+                    View business →
+                  </Link>
+                )}
+              </div>
+            </>
+          ) : trip.userVehicle ? (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Vehicle</h2>
+                <StatusBadge status={trip.userVehicle.status} size="sm" />
+              </div>
+              <p className="font-medium text-slate-800">
+                {trip.userVehicle.make} {trip.userVehicle.model}{trip.userVehicle.year ? ` (${trip.userVehicle.year})` : ''}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                {trip.userVehicle.color && `${trip.userVehicle.color} · `}Plate {trip.userVehicle.plateNumber}
+              </p>
+              <Link
+                href={`/admin/user-vehicles/${trip.userVehicle.id}`}
+                className="inline-block mt-3 text-sm font-semibold text-primary hover:underline"
+              >
+                View vehicle & documents →
+              </Link>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Vehicle</h2>
+              <p className="text-sm text-slate-500">No vehicle on record.</p>
+            </>
+          )}
         </div>
       </div>
 

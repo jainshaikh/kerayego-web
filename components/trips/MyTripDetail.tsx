@@ -12,6 +12,8 @@ import { Button, Card, ConfirmDialog, ErrorState, Modal, Textarea } from '../ui'
 import { getCurrencyCode } from '../../lib/utils/currency';
 import { formatTripDateTime } from '../../lib/utils/datetime';
 import { DriverCockpit } from './live/DriverCockpit';
+import { CancelSeatModal, canPosterCancelSeat } from './CancelSeatModal';
+import type { TripInquiry } from '../../lib/api/trip-inquiries.api';
 
 interface MyTripDetailProps {
   backHref: string; // e.g. '/dashboard/trips'
@@ -41,6 +43,12 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
   const updateInquiryStatus = useUpdateTripInquiryStatus();
   const [rejectModal, setRejectModal] = useState<{ inquiryId: string } | null>(null);
   const [rejectNote, setRejectNote] = useState('');
+  const [cancelSeat, setCancelSeat] = useState<TripInquiry | null>(null);
+
+  // A49: the backend refuses to cancel a trip while any seat request is still
+  // PENDING or ACCEPTED — the poster declines/cancels each one first.
+  const activeSeatCount =
+    inquiriesRes?.data.filter((i) => i.status === 'PENDING' || i.status === 'ACCEPTED').length ?? 0;
 
   if (isLoading) {
     return (
@@ -102,13 +110,25 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
           </div>
 
           {trip.status === 'ACTIVE' && (
-            <div className="flex flex-shrink-0 items-center gap-2.5">
-              <Button variant="danger-outline" size="sm" onClick={() => setConfirmCancel(true)}>
-                Cancel trip
-              </Button>
-              <Button size="sm" onClick={() => setConfirmStart(true)}>
-                Start trip
-              </Button>
+            <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+              <div className="flex items-center gap-2.5">
+                <Button
+                  variant="danger-outline"
+                  size="sm"
+                  disabled={inquiriesLoading || activeSeatCount > 0}
+                  onClick={() => setConfirmCancel(true)}
+                >
+                  Cancel trip
+                </Button>
+                <Button size="sm" onClick={() => setConfirmStart(true)}>
+                  Start trip
+                </Button>
+              </div>
+              {activeSeatCount > 0 && (
+                <p className="text-right text-xs text-text-muted">
+                  Cancel or decline each seat first
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -213,7 +233,9 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
                           ? 'Accepted'
                           : inquiry.status === 'REJECTED'
                             ? 'Declined'
-                            : 'Cancelled'
+                            : inquiry.status === 'EXPIRED'
+                              ? 'Expired'
+                              : 'Cancelled'
                     }
                   />
                 </div>
@@ -244,6 +266,19 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
                     </Button>
                   </div>
                 )}
+
+                {canPosterCancelSeat(inquiry) && (
+                  <div className="mt-3.5 flex gap-2.5">
+                    <Button
+                      size="sm"
+                      variant="danger-outline"
+                      disabled={updateInquiryStatus.isPending}
+                      onClick={() => setCancelSeat(inquiry)}
+                    >
+                      Cancel seat
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -268,10 +303,14 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
               loading={updateInquiryStatus.isPending}
               onClick={async () => {
                 if (!rejectModal) return;
-                await updateInquiryStatus.mutateAsync({
-                  id: rejectModal.inquiryId,
-                  data: { newStatus: 'REJECTED', note: rejectNote || undefined },
-                });
+                try {
+                  await updateInquiryStatus.mutateAsync({
+                    id: rejectModal.inquiryId,
+                    data: { newStatus: 'REJECTED', note: rejectNote || undefined },
+                  });
+                } catch {
+                  return; // the hook already toasts the backend's message
+                }
                 setRejectModal(null);
               }}
             >
@@ -293,17 +332,26 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
         open={confirmCancel}
         onOpenChange={setConfirmCancel}
         title="Cancel this trip?"
-        description="Riders will no longer be able to find or contact you for this trip."
+        description="The trip will be taken down and no one will be able to request a seat on it. This can't be undone."
         confirmLabel="Cancel trip"
         cancelLabel="Keep it"
         destructive
         loading={cancelTrip.isPending}
         onConfirm={async () => {
-          await cancelTrip.mutateAsync({ id: trip.id });
+          try {
+            await cancelTrip.mutateAsync({ id: trip.id });
+          } catch {
+            // useCancelTrip already toasts the backend's message (e.g. the A49
+            // "reject or cancel each seat request first" refusal).
+            setConfirmCancel(false);
+            return;
+          }
           setConfirmCancel(false);
           router.push(backHref);
         }}
       />
+
+      <CancelSeatModal inquiry={cancelSeat} onClose={() => setCancelSeat(null)} />
 
       <ConfirmDialog
         open={confirmStart}
@@ -314,7 +362,11 @@ export function MyTripDetail({ backHref, vehicleBasePath }: MyTripDetailProps) {
         cancelLabel="Not yet"
         loading={startTrip.isPending}
         onConfirm={async () => {
-          await startTrip.mutateAsync(trip.id);
+          try {
+            await startTrip.mutateAsync(trip.id);
+          } catch {
+            return; // useStartTrip toasts the backend's message
+          }
           setConfirmStart(false);
         }}
       />

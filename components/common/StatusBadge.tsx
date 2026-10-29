@@ -21,6 +21,8 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   cancelled: 'slate',
   expired: 'slate',
   completed: 'teal',
+  unverified: 'slate',
+  verified: 'emerald',
 };
 
 const TONE_STYLES: Record<StatusTone, string> = {
@@ -49,6 +51,9 @@ const LABEL_MAP: Record<string, string> = {
   CANCELLED: 'Cancelled',
   EXPIRED: 'Expired',
   COMPLETED: 'Completed',
+  // DriverVerificationStatus (PENDING_REVIEW/REJECTED reuse the labels above)
+  UNVERIFIED: 'Not submitted',
+  VERIFIED: 'Verified',
 };
 
 interface StatusBadgeProps {
