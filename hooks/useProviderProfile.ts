@@ -1,9 +1,23 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { providersApi, type UpdateProviderPayload, type CreateShowroomPayload } from '../lib/api/providers.api';
-export type { CreateShowroomPayload };
+import {
+  providersApi,
+  type ProviderProfileWithMeta,
+  type UpdateProviderPayload,
+  type CreateShowroomPayload,
+  type UpdateShowroomPayload,
+} from '../lib/api/providers.api';
+import type { ProviderProfile } from '../types/api.types';
+import { getApiErrorMessage } from './useAccountDeletion';
+import { invalidateWorkspaces } from './useWorkspace';
+export type { CreateShowroomPayload, UpdateShowroomPayload };
+
+// The business itself: GET /providers/me and its edits — the web twin of
+// kerayego-partner features/business/queries.ts + features/showrooms/queries.ts.
+// The edit hooks don't toast; the page shows what happened (inline or toast).
+// useSubmitForReview keeps its toasts (the dashboard relies on them).
 
 export const providerQueryKeys = {
   myProfile: ['provider', 'me'] as const,
@@ -17,68 +31,84 @@ export function useProviderProfile() {
   });
 }
 
+/**
+ * A PATCH /providers/me result laid over the cached business so a new name or
+ * logo shows straight away, then a refetch for what the PATCH response doesn't
+ * carry (completeness, documents' signed links).
+ */
+function applySavedBusiness(queryClient: QueryClient, saved: ProviderProfile | undefined) {
+  if (saved) {
+    queryClient.setQueryData<ProviderProfileWithMeta | null>(providerQueryKeys.myProfile, (cached) =>
+      cached && cached.id === saved.id
+        ? {
+            ...cached,
+            businessName: saved.businessName,
+            slug: saved.slug,
+            businessDescription: saved.businessDescription,
+            logoUrl: saved.logoUrl,
+            bannerUrl: saved.bannerUrl,
+            verificationStatus: saved.verificationStatus,
+            rejectionReason: saved.rejectionReason,
+            ownerCnicNumber: saved.ownerCnicNumber ?? cached.ownerCnicNumber,
+            updatedAt: saved.updatedAt,
+          }
+        : cached,
+    );
+  }
+  void queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile });
+}
+
+/** PATCH /providers/me — the details form, or setting/removing the logo or banner. */
 export function useUpdateProvider() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: UpdateProviderPayload) => providersApi.update(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile });
-      toast.success('Profile updated');
+    mutationFn: (data: UpdateProviderPayload) => providersApi.update(data).then((r) => r.data),
+    onSuccess: (saved) => {
+      applySavedBusiness(queryClient, saved);
+      // The business name shows in the dashboard switcher.
+      void invalidateWorkspaces(queryClient);
     },
-    onError: () => toast.error('Failed to update profile'),
   });
 }
 
+/** POST /providers/me/submit-for-review. Refetches the business and the dashboards (their status). */
 export function useSubmitForReview() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => providersApi.submitForReview(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile });
-      toast.success('Profile submitted for review! We\'ll notify you by email.');
+      void queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile });
+      void invalidateWorkspaces(queryClient);
+      toast.success('Submitted for review. KerayeGo will review your business; the result will show here.');
     },
-    onError: (error: unknown) => {
-      const msg =
-        (error as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message ?? 'Submission failed';
-      toast.error(msg);
-    },
+    onError: (error: unknown) => toast.error(getApiErrorMessage(error, 'Submission failed')),
   });
 }
 
+/** POST /providers/me/showrooms — 409 if the business already has its one showroom. */
 export function useCreateShowroom() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateShowroomPayload) => providersApi.createShowroom(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile });
-      toast.success('Showroom added');
-    },
-    onError: () => toast.error('Failed to add showroom'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile }),
   });
 }
 
+/** PATCH /providers/me/showrooms/:id — send only what changed. */
 export function useUpdateShowroom() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ showroomId, data }: { showroomId: string; data: Partial<CreateShowroomPayload> }) =>
+    mutationFn: ({ showroomId, data }: { showroomId: string; data: UpdateShowroomPayload }) =>
       providersApi.updateShowroom(showroomId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile });
-      toast.success('Showroom updated');
-    },
-    onError: () => toast.error('Failed to update showroom'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile }),
   });
 }
 
+/** DELETE /providers/me/showrooms/:id — never refused; its cars are unlinked. */
 export function useDeleteShowroom() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (showroomId: string) => providersApi.deleteShowroom(showroomId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile });
-      toast.success('Showroom removed');
-    },
-    onError: () => toast.error('Failed to remove showroom'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile }),
   });
 }

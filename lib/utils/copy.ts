@@ -89,3 +89,8 @@ export function describeRates(c: RateCounts): { transmission: string; hourly: st
 
   return { transmission, hourly, longTerm };
 }
+
+// A car's plate-wide ride count (plan A17): "1 ride on KerayeGo", "23 rides on KerayeGo".
+export function rideCountLabel(rideCount: number): string {
+  return `${rideCount.toLocaleString('en-PK')} ${rideCount === 1 ? 'ride' : 'rides'} on KerayeGo`;
+}

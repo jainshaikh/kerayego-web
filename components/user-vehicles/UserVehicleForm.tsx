@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { CircleAlert } from 'lucide-react';
 import { useCreateUserVehicle } from '../../hooks/useUserVehicles';
 import { userVehicleSchema, type UserVehicleFormValues } from '../../lib/validations/user-vehicle.schema';
+import { formatCnicInput } from '../../lib/validations/cnic.schema';
 import { DocumentUploadField, type UploadedDoc } from '../trips/DocumentUploadField';
 import { VehiclePhotosField } from './VehiclePhotosField';
 import type { UserVehicleImageInput } from '../../lib/api/user-vehicles.api';
@@ -42,6 +43,7 @@ export function UserVehicleForm({ cancelHref, successHref }: UserVehicleFormProp
     handleSubmit,
     trigger,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<UserVehicleFormValues>({
     resolver: zodResolver(userVehicleSchema),
@@ -58,7 +60,7 @@ export function UserVehicleForm({ cancelHref, successHref }: UserVehicleFormProp
   const missingDocs = missingDocLabels.length > 0;
 
   const goToStep2 = async () => {
-    const valid = await trigger(['make', 'model', 'plateNumber', 'year']);
+    const valid = await trigger(['make', 'model', 'plateNumber', 'year', 'cnicNumber']);
     if (valid) setStep(2);
   };
 
@@ -126,6 +128,21 @@ export function UserVehicleForm({ cancelHref, successHref }: UserVehicleFormProp
             </div>
 
             <Input label="Number plate" required placeholder="e.g. ABC-123" error={errors.plateNumber?.message} {...register('plateNumber')} />
+
+            <Input
+              label="Your CNIC number"
+              required
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={15}
+              placeholder="12345-1234567-1"
+              className="font-mono"
+              helper="Only our review team sees this — it's never shown on your listing."
+              error={errors.cnicNumber?.message}
+              {...register('cnicNumber', {
+                onChange: (e) => setValue('cnicNumber', formatCnicInput(e.target.value)),
+              })}
+            />
 
             <div className="flex justify-end gap-2.5 pt-1">
               <Button type="button" variant="secondary" onClick={() => router.push(cancelHref)}>
@@ -224,6 +241,7 @@ export function UserVehicleForm({ cancelHref, successHref }: UserVehicleFormProp
               <SummaryRow label="Year" value={vehicleValues.year ? String(vehicleValues.year) : '—'} />
               <SummaryRow label="Color" value={vehicleValues.color || '—'} />
               <SummaryRow label="Plate number" value={vehicleValues.plateNumber} />
+              <SummaryRow label="CNIC number" value={vehicleValues.cnicNumber} />
               <SummaryRow label="Photos" value={`${photos.length} added`} />
               <SummaryRow label="Documents" value="4 of 4 uploaded" />
             </div>

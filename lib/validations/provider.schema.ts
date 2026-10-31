@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { cnicNumberSchema } from './cnic.schema';
 
 export const createProviderSchema = z.object({
   businessName: z
@@ -15,12 +16,15 @@ export const createProviderSchema = z.object({
     .max(20)
     .optional()
     .or(z.literal('')),
+  // Optional in the API; required in this form (submit-for-review 400s without it).
+  ownerCnicNumber: cnicNumberSchema,
 });
 
 export const updateProviderSchema = z.object({
   businessName: z.string().min(2).max(150).optional(),
   businessDescription: z.string().max(2000).optional().or(z.literal('')),
   logoUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  ownerCnicNumber: cnicNumberSchema,
 });
 
 export const showroomSchema = z.object({

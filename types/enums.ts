@@ -27,6 +27,8 @@ export enum VehicleStatus {
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
   ARCHIVED = 'ARCHIVED',
+  // Taken down by KerayeGo admin; can be reactivated.
+  SUSPENDED = 'SUSPENDED',
 }
 
 // The markets this platform actually operates in, running in parallel —
@@ -41,6 +43,8 @@ export enum BookingRequestStatus {
   PENDING = 'PENDING',
   CONTACTED = 'CONTACTED',
   ACCEPTED = 'ACCEPTED',
+  // The assigned driver started the job (Partner app); ends at COMPLETED.
+  IN_PROGRESS = 'IN_PROGRESS',
   REJECTED = 'REJECTED',
   CANCELLED = 'CANCELLED',
   COMPLETED = 'COMPLETED',
@@ -50,6 +54,16 @@ export enum DocumentStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
+}
+
+// A person's role inside a rental business (BusinessMember.role; the owner is
+// BUSINESS_ADMIN). Also names the business/driver dashboards on /provider and
+// /driver — see lib/workspace/workspaceSelection.ts. "Business admin" is the
+// business owner, never KerayeGo admin.
+export enum BusinessRole {
+  BUSINESS_ADMIN = 'BUSINESS_ADMIN',
+  MANAGER = 'MANAGER',
+  DRIVER = 'DRIVER',
 }
 
 // A provider driver's own identity/licence verification (DriverProfile), reviewed

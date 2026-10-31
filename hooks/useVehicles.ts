@@ -1,126 +1,164 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import {
-  vehiclesApi,
-  type CreateVehiclePayload,
-  type UpdateVehiclePayload,
-  type AddVehicleImagePayload,
-} from '../lib/api/vehicles.api';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { mediaApi } from '../lib/api/media.api';
+import { vehiclesApi, type CreateVehiclePayload, type UpdateVehiclePayload } from '../lib/api/vehicles.api';
+import { imagePayloadFromUpload } from '../lib/ops/photos';
 import { trackEvent } from '../lib/utils/analytics';
+import type { FleetListFilters, FleetVehicle, FleetVehicleImage } from '../types/fleet.types';
+import { providerQueryKeys } from './useProviderProfile';
+
+// The business's fleet (/provider/vehicles), ported from the KerayeGo Partner
+// app's features/fleet/queries.ts. Everything sits under ['vehicles'], so a
+// change to one car refreshes every filtered list. Errors are shown by the
+// pages (inline or toast), not here.
 
 export const vehicleQueryKeys = {
-  myVehicles: (params?: object) => ['vehicles', 'my', params] as const,
-  vehicle: (id: string) => ['vehicles', id] as const,
+  all: ['vehicles'] as const,
+  lists: ['vehicles', 'my'] as const,
+  myVehicles: (filters: FleetListFilters, page: number) => ['vehicles', 'my', filters, page] as const,
+  vehicle: (id: string | undefined) => ['vehicles', 'detail', id] as const,
 };
 
-export function useMyVehicles(params?: { page?: number; limit?: number; status?: string; search?: string }) {
+/** One page of the business's cars, newest first. */
+export function useMyVehicles(filters: FleetListFilters, page: number, options: { enabled?: boolean } = {}) {
   return useQuery({
-    queryKey: vehicleQueryKeys.myVehicles(params),
-    queryFn: () => vehiclesApi.getMyVehicles(params).then((r) => r),
+    queryKey: vehicleQueryKeys.myVehicles(filters, page),
+    queryFn: () => vehiclesApi.list(filters, page),
+    placeholderData: (previous) => previous,
+    enabled: options.enabled ?? true,
   });
 }
 
-export function useVehicle(id: string) {
+/** Every car, 20 at a time ("Load more") — the Ratings page's car list. */
+export function useMyVehiclesInfinite() {
+  return useInfiniteQuery({
+    queryKey: [...vehicleQueryKeys.lists, 'infinite'] as const,
+    queryFn: ({ pageParam }) => vehiclesApi.list({}, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => (lastPage.meta?.hasNextPage ? lastPage.meta.page + 1 : undefined),
+  });
+}
+
+/** One of the business's cars, with every photo, its features and showroom. */
+export function useVehicle(id: string | undefined) {
   return useQuery({
     queryKey: vehicleQueryKeys.vehicle(id),
-    queryFn: () => vehiclesApi.getVehicle(id).then((r) => r.data),
+    queryFn: () => vehiclesApi.get(id as string),
     enabled: !!id,
   });
 }
 
+/**
+ * Shares the car a mutation returned and refreshes the lists. Only
+ * GET /vehicles/:id carries plateHistory, so the cached one is kept and the
+ * car refetched in the background (a plate change can change its history).
+ */
+function useStoreVehicle() {
+  const queryClient = useQueryClient();
+  return (vehicle: FleetVehicle) => {
+    const key = vehicleQueryKeys.vehicle(vehicle.id);
+    const cached = queryClient.getQueryData<FleetVehicle>(key);
+    queryClient.setQueryData<FleetVehicle>(key, {
+      ...vehicle,
+      plateHistory: vehicle.plateHistory !== undefined ? vehicle.plateHistory : cached?.plateHistory,
+    });
+    void queryClient.invalidateQueries({ queryKey: key });
+    void queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.lists });
+  };
+}
+
+/** POST /vehicles (business admin). Also refreshes the business (its car count). */
 export function useCreateVehicle() {
   const queryClient = useQueryClient();
+  const storeVehicle = useStoreVehicle();
   return useMutation({
-    mutationFn: (data: CreateVehiclePayload) => vehiclesApi.create(data),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles', 'my'] });
+    mutationFn: (payload: CreateVehiclePayload) => vehiclesApi.create(payload),
+    onSuccess: (vehicle, variables) => {
+      storeVehicle(vehicle);
+      void queryClient.invalidateQueries({ queryKey: providerQueryKeys.myProfile });
       trackEvent('list_vehicle_complete', { make: variables.make, model: variables.model });
-      toast.success('Vehicle created as draft');
-    },
-    onError: () => toast.error('Failed to create vehicle'),
-  });
-}
-
-export function useUpdateVehicle(vehicleId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: UpdateVehiclePayload) => vehiclesApi.update(vehicleId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.vehicle(vehicleId) });
-      queryClient.invalidateQueries({ queryKey: ['vehicles', 'my'] });
-      toast.success('Vehicle updated');
-    },
-    onError: (error: unknown) => {
-      const msg =
-        (error as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message ?? 'Failed to update vehicle';
-      toast.error(msg);
     },
   });
 }
 
-export function useSubmitVehicleForReview(vehicleId: string) {
+export function useUpdateVehicle(id: string) {
+  const storeVehicle = useStoreVehicle();
+  return useMutation({
+    mutationFn: (payload: UpdateVehiclePayload) => vehiclesApi.update(id, payload),
+    onSuccess: storeVehicle,
+  });
+}
+
+export function useSubmitVehicleForReview(id: string) {
+  const storeVehicle = useStoreVehicle();
+  return useMutation({
+    mutationFn: () => vehiclesApi.submitForReview(id),
+    onSuccess: storeVehicle,
+  });
+}
+
+/** DELETE /vehicles/:id (archive) — returns only { id, status }, so the car is refetched. */
+export function useArchiveVehicle(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => vehiclesApi.submitForReview(vehicleId),
+    mutationFn: () => vehiclesApi.archive(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.vehicle(vehicleId) });
-      queryClient.invalidateQueries({ queryKey: ['vehicles', 'my'] });
-      toast.success('Submitted for review! We\'ll notify you once approved.');
-    },
-    onError: (error: unknown) => {
-      const msg =
-        (error as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message ?? 'Submission failed';
-      toast.error(msg);
+      void queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.vehicle(id) });
+      void queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.lists });
     },
   });
 }
 
-export function useArchiveVehicle() {
+function useRefreshPhotos(id: string) {
   const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.vehicle(id) });
+    void queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.lists });
+  };
+}
+
+/**
+ * Uploads a file into the car's folder (context=vehicle, entityId = the car,
+ * so the backend names and watermarks it) and attaches it as the last photo.
+ * If attaching fails (e.g. 10 photos already) the uploaded file is deleted
+ * again, best effort, and the attach error is thrown.
+ */
+export function useAddVehiclePhoto(id: string, onProgress?: (percent: number) => void) {
+  const refresh = useRefreshPhotos(id);
   return useMutation({
-    mutationFn: (vehicleId: string) => vehiclesApi.archive(vehicleId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles', 'my'] });
-      toast.success('Vehicle archived');
+    mutationFn: async (file: File): Promise<FleetVehicleImage> => {
+      const upload = await mediaApi.upload(file, 'vehicle', undefined, id, onProgress);
+      try {
+        return await vehiclesApi.addImage(id, imagePayloadFromUpload(upload));
+      } catch (error) {
+        await mediaApi.delete(upload.publicId).catch(() => undefined);
+        throw error;
+      }
     },
-    onError: () => toast.error('Failed to archive vehicle'),
+    onSuccess: refresh,
   });
 }
 
-export function useAddVehicleImage(vehicleId: string) {
-  const queryClient = useQueryClient();
+export function useRemoveVehiclePhoto(id: string) {
+  const refresh = useRefreshPhotos(id);
   return useMutation({
-    mutationFn: (data: AddVehicleImagePayload) => vehiclesApi.addImage(vehicleId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.vehicle(vehicleId) });
-    },
-    onError: () => toast.error('Failed to add image'),
+    mutationFn: (imageId: string) => vehiclesApi.removeImage(id, imageId),
+    onSuccess: refresh,
   });
 }
 
-export function useRemoveVehicleImage(vehicleId: string) {
+/** Saves a new photo order; the cached car takes the returned order at once. */
+export function useReorderVehiclePhotos(id: string) {
   const queryClient = useQueryClient();
+  const refresh = useRefreshPhotos(id);
   return useMutation({
-    mutationFn: (imageId: string) => vehiclesApi.removeImage(vehicleId, imageId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.vehicle(vehicleId) });
-      toast.success('Image removed');
+    mutationFn: (imageIds: string[]) => vehiclesApi.reorderImages(id, imageIds),
+    onSuccess: (images) => {
+      queryClient.setQueryData<FleetVehicle>(vehicleQueryKeys.vehicle(id), (vehicle) =>
+        vehicle ? { ...vehicle, images } : vehicle,
+      );
+      refresh();
     },
-    onError: () => toast.error('Failed to remove image'),
-  });
-}
-
-export function useReorderVehicleImages(vehicleId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (imageIds: string[]) => vehiclesApi.reorderImages(vehicleId, imageIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.vehicle(vehicleId) });
-    },
-    onError: () => toast.error('Failed to reorder images'),
   });
 }

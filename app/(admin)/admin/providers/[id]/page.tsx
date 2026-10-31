@@ -12,6 +12,7 @@ import {
 } from '../../../../../hooks/useAdmin';
 import { StatusBadge } from '../../../../../components/common/StatusBadge';
 import { AdminPageHeader, ApproveDialog } from '../../../../../components/admin';
+import { BusinessActivityCard } from '../../../../../components/admin/BusinessActivityCard';
 import { Button, Card, ConfirmDialog, ErrorState } from '../../../../../components/ui';
 
 const DOC_LABELS: Record<string, string> = {
@@ -69,7 +70,7 @@ export default function AdminProviderDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { data: provider, isLoading, isError, refetch } = useAdminProviderDetail(id);
-  const { data: summary } = useAdminProviderSummary(id);
+  const { data: summary, isLoading: summaryLoading, isError: summaryError } = useAdminProviderSummary(id);
   const approve = useApproveProvider();
   const reject = useRejectProvider();
   const [modal, setModal] = useState<'approve' | 'reject' | null>(null);
@@ -193,37 +194,12 @@ export default function AdminProviderDetailPage() {
         </div>
       )}
 
-      {/* Business Activity Logs (A31, A33) */}
-      {summary && summary.recentActivity?.length > 0 && (
-        <Card className="p-6">
-          <h2 className="mb-3 text-base font-semibold text-ink">Business Activity Logs (A31)</h2>
-          <p className="mb-4 text-xs text-text-muted">Audit log of key events and moderation actions for this business.</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border-subtle text-text-faint uppercase font-medium">
-                <tr>
-                  <th className="pb-2">Action</th>
-                  <th className="pb-2">Admin / Actor</th>
-                  <th className="pb-2">Details</th>
-                  <th className="pb-2">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {summary.recentActivity.map((log) => (
-                  <tr key={log.id} className="text-ink">
-                    <td className="py-2.5 font-medium">{log.actionType}</td>
-                    <td className="py-2.5 text-text-muted">{log.adminUser?.name || 'System'}</td>
-                    <td className="py-2.5 font-mono text-[11px] text-text-muted max-w-xs truncate">
-                      {log.metadata ? JSON.stringify(log.metadata) : '—'}
-                    </td>
-                    <td className="py-2.5 text-text-faint">{new Date(log.createdAt).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+      <BusinessActivityCard
+        providerId={id}
+        recentActivity={summary?.recentActivity}
+        recentLoading={summaryLoading}
+        recentError={summaryError}
+      />
 
       {/* Business info + owner */}
       <div className="grid gap-5 sm:grid-cols-2">
@@ -260,6 +236,13 @@ export default function AdminProviderDetailPage() {
             )}
             <Field label="Joined">
               {new Date(provider.user.createdAt).toLocaleDateString('en-PK', { dateStyle: 'medium' })}
+            </Field>
+            <Field label="Owner's CNIC number">
+              {provider.ownerCnicNumber ? (
+                <span className="font-mono">{provider.ownerCnicNumber}</span>
+              ) : (
+                <span className="text-text-faint">Not given</span>
+              )}
             </Field>
           </div>
           <Link

@@ -91,6 +91,14 @@ export default function AdminUserVehicleDetailPage() {
             <span>{vehicle.owner.email}</span>
             {vehicle.owner.phone && <span>{vehicle.owner.phone}</span>}
           </div>
+          <p className="mt-1 text-sm text-slate-500">
+            CNIC number:{' '}
+            {vehicle.cnicNumber ? (
+              <span className="font-mono font-medium text-slate-700">{vehicle.cnicNumber}</span>
+            ) : (
+              <span className="text-slate-400">Not given</span>
+            )}
+          </p>
           <Link
             href={`/admin/users/${vehicle.owner.id}`}
             className="inline-block mt-2 text-sm font-semibold text-primary hover:underline"

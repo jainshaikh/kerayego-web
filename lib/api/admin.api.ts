@@ -95,6 +95,8 @@ export interface AdminProviderDetail {
   verificationStatus: string;
   isFeatured: boolean;
   rejectionReason?: string | null;
+  /** Owner's CNIC as typed in business setup (`12345-1234567-1`); null when not given yet. */
+  ownerCnicNumber?: string | null;
   createdAt: string;
   updatedAt: string;
   user: { id: string; name: string; email: string; phone?: string | null; createdAt: string };
@@ -129,6 +131,7 @@ export interface AdminVehicleDetail {
   transmission: string;
   fuelType: string;
   seatingCapacity: number;
+  plateNumber?: string | null;
   engineType?: string | null;
   pricePer6Hours?: string | number | null;
   pricePer12Hours?: string | number | null;
@@ -192,6 +195,8 @@ export interface AdminUserVehicle {
   plateNumber: string;
   status: string;
   rejectionReason?: string | null;
+  /** The owner's CNIC as typed on the car form (`12345-1234567-1`); null when not given (older cars/app builds). */
+  cnicNumber?: string | null;
   createdAt: string;
   updatedAt: string;
   owner: { id: string; name: string; email: string; phone?: string | null };
@@ -253,15 +258,39 @@ export interface AdminProviderBusinessSummary {
     cancelled: number;
     rejected: number;
   };
-  recentActivity: Array<{
-    id: string;
-    actionType: string;
-    entityType: string;
-    entityId: string;
-    metadata?: any;
-    createdAt: string;
-    adminUser: { id: string; name: string; email: string };
-  }>;
+  /** The business's own latest 15 activity-log entries (not KerayeGo admin actions). */
+  recentActivity: ActivityLogEntry[];
+}
+
+// ── Business activity log (A26, A31, A33, A45) ────────────────────────────
+// What a business's admins, managers and drivers did. Same entry shape on
+// GET /admin/providers/:id/summary (recentActivity), GET
+// /admin/providers/:id/activity-logs and the partner app's own log.
+
+export type ActivityLogCategory = 'BOOKINGS' | 'JOBS' | 'FLEET' | 'TEAM' | 'BUSINESS';
+
+/** The actor's role in the business when the entry was written. */
+export type ActivityLogActorRole = 'BUSINESS_ADMIN' | 'MANAGER' | 'DRIVER';
+
+export interface ActivityLogEntry {
+  id: string;
+  createdAt: string;
+  action: string;
+  category: ActivityLogCategory;
+  entityType: string;
+  entityId: string | null;
+  /** null = system. An anonymised account's name comes back as "Deleted user". */
+  actor: { id: string; name: string; role: ActivityLogActorRole | null } | null;
+  /** Server-rendered sentence without the actor, e.g. "started the job for Toyota Corolla". */
+  summary: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface ActivityLogQuery {
+  page?: number;
+  limit?: number;
+  category?: ActivityLogCategory;
+  actorUserId?: string;
 }
 
 export interface AdminTrackingLookupResult {
@@ -318,6 +347,55 @@ export interface AdminTrackingLookupResult {
   }>;
 }
 
+// ── Person blocks & identity reviews (A22, D18) ──────────────────────────
+// A block keeps one-way hashes of a person's CNIC(s), phone and email; only a
+// short hint per identifier ever comes back (e.g. `•••• 4567`).
+
+export type PersonBlockIdentifierKind = 'CNIC' | 'PHONE' | 'EMAIL';
+
+export interface PersonBlockIdentifierHint {
+  kind: PersonBlockIdentifierKind;
+  hint: string;
+}
+
+/** POST /admin/users/:id/block and POST /admin/identity-reviews/:id/block. */
+export interface BlockPersonResult {
+  blockId: string;
+  identifiers: PersonBlockIdentifierHint[];
+  /** Other accounts matching one of the identifiers, now on hold for review. */
+  heldAccounts: number;
+}
+
+export interface PersonBlockView {
+  id: string;
+  blockedUserId: string | null;
+  /** The person's name at block time. */
+  blockedUserLabel: string | null;
+  reason: string;
+  createdAt: string;
+  createdBy: { id: string; name: string } | null;
+  liftedAt: string | null;
+  liftReason: string | null;
+  identifiers: PersonBlockIdentifierHint[];
+}
+
+export type IdentityReviewStatus = 'PENDING' | 'CLEARED' | 'BLOCKED';
+
+export interface IdentityReviewView {
+  id: string;
+  status: IdentityReviewStatus;
+  matchedKind: 'PHONE' | 'CNIC';
+  createdAt: string;
+  user: { id: string; name: string; email: string; phone: string | null; status: string };
+  block: {
+    id: string;
+    reason: string;
+    blockedUserLabel: string | null;
+    createdAt: string;
+    identifiers: PersonBlockIdentifierHint[];
+  };
+}
+
 // ── API client ─────────────────────────────────────────────────────────────
 
 export const adminApi = {
@@ -339,6 +417,13 @@ export const adminApi = {
     apiClient.get<ApiResponse<AdminProviderDetail>>(`/admin/providers/${id}`).then((r) => r.data.data),
   getProviderSummary: (id: string) =>
     apiClient.get<ApiResponse<AdminProviderBusinessSummary>>(`/admin/providers/${id}/summary`).then((r) => r.data.data),
+  /** GET /admin/providers/:id/activity-logs — newest first; limit max 100. */
+  getProviderActivityLogs: (id: string, { page = 1, limit = 30, category, actorUserId }: ActivityLogQuery = {}) =>
+    apiClient
+      .get<PagedResponse<ActivityLogEntry>>(`/admin/providers/${id}/activity-logs`, {
+        params: { page, limit, ...(category && { category }), ...(actorUserId && { actorUserId }) },
+      })
+      .then((r) => r.data),
   approveProvider: (id: string, note?: string) =>
     apiClient.patch<ApiResponse<AdminProviderSummary>>(`/admin/providers/${id}/approve`, { note }).then((r) => r.data.data),
   rejectProvider: (id: string, reason: string) =>
@@ -357,6 +442,14 @@ export const adminApi = {
     apiClient.patch<ApiResponse<AdminVehicleSummary>>(`/admin/vehicles/${id}/approve`, { note }).then((r) => r.data.data),
   rejectVehicle: (id: string, reason: string) =>
     apiClient.patch<ApiResponse<AdminVehicleSummary>>(`/admin/vehicles/${id}/reject`, { reason }).then((r) => r.data.data),
+  // The business can't change a live car's plate (A15); only an admin can.
+  correctVehiclePlate: (id: string, plateNumber: string, reason: string) =>
+    apiClient
+      .patch<ApiResponse<{ id: string; plateNumber: string; previousPlateNumber: string | null }>>(
+        `/admin/vehicles/${id}/plate`,
+        { plateNumber, reason },
+      )
+      .then((r) => r.data.data),
 
   // Users
   getUsers: (page = 1, limit = 20, role?: string, status?: string) =>
@@ -372,6 +465,30 @@ export const adminApi = {
   activateUser: (id: string) =>
     apiClient
       .patch<ApiResponse<{ id: string; name: string; email: string; status: string }>>(`/admin/users/${id}/activate`)
+      .then((r) => r.data.data),
+
+  // Person blocks (A22, D18). Lift is SUPER_ADMIN only and never reactivates the account.
+  blockUser: (id: string, reason: string) =>
+    apiClient.post<ApiResponse<BlockPersonResult>>(`/admin/users/${id}/block`, { reason }).then((r) => r.data.data),
+  getBlocks: (page = 1, limit = 20, includeLifted = false) =>
+    apiClient
+      .get<PagedResponse<PersonBlockView>>('/admin/blocks', { params: { page, limit, includeLifted } })
+      .then((r) => r.data),
+  liftBlock: (id: string, reason: string) =>
+    apiClient.post<ApiResponse<unknown>>(`/admin/blocks/${id}/lift`, { reason }).then((r) => r.data.data),
+
+  // Identity reviews ("Possible blocked people"): accounts on hold after matching a block.
+  getIdentityReviews: (page = 1, limit = 20, status: IdentityReviewStatus = 'PENDING') =>
+    apiClient
+      .get<PagedResponse<IdentityReviewView>>('/admin/identity-reviews', { params: { page, limit, status } })
+      .then((r) => r.data),
+  clearIdentityReview: (id: string, note?: string) =>
+    apiClient
+      .post<ApiResponse<unknown>>(`/admin/identity-reviews/${id}/clear`, note ? { note } : {})
+      .then((r) => r.data.data),
+  blockIdentityReview: (id: string, reason: string) =>
+    apiClient
+      .post<ApiResponse<BlockPersonResult>>(`/admin/identity-reviews/${id}/block`, { reason })
       .then((r) => r.data.data),
 
   // Trips
@@ -431,6 +548,11 @@ export const adminApi = {
       .delete<ApiResponse<{ success: boolean; deletedReviewId: string }>>(`/admin/reviews/${id}`, {
         data: { reason },
       })
+      .then((r) => r.data.data),
+  /** SUPER_ADMIN only. The deletion is recorded in the permanent AdminActionLog. */
+  deleteBusinessActivityLog: (id: string, reason: string) =>
+    apiClient
+      .delete<ApiResponse<{ deleted: true }>>(`/admin/business-activity-logs/${id}`, { data: { reason } })
       .then((r) => r.data.data),
 
   // Tracking lookup (Single vehicle/driver lookup, A39)

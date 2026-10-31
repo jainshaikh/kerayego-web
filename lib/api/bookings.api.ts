@@ -101,11 +101,6 @@ export interface BookingCounts {
   completed: number;
 }
 
-export interface ProviderBookingCounts {
-  pending: number;
-  contacted: number;
-}
-
 export const bookingsApi = {
   create: (data: CreateBookingRequestData) =>
     apiClient.post<BookingRequest>('/booking-requests', data).then((r) => r.data),
@@ -160,13 +155,4 @@ export const bookingsApi = {
         }>
       >(`/booking-requests/${id}/live-route`)
       .then((r) => r.data),
-
-  // Provider
-  getProviderInquiries: (status?: BookingStatus, page = 1, limit = 20) =>
-    apiClient
-      .get<BookingsResponse>('/provider/inquiries', { params: { status, page, limit } })
-      .then((r) => r.data),
-
-  getProviderCounts: () =>
-    apiClient.get<ProviderBookingCounts>('/provider/inquiries/counts').then((r) => r.data),
 };

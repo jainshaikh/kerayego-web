@@ -16,6 +16,7 @@ import type { ListingVehicleDetail } from '../../../../../../lib/api/listings.ap
 import { getCurrencyCode } from '../../../../../../lib/utils/currency';
 import { getAvailableDurations, getUnitPrice } from '../../../../../../lib/utils/rentalDuration';
 import { getVehicleUrl } from '../../../../../../lib/utils/vehicleUrl';
+import { rideCountLabel } from '../../../../../../lib/utils/copy';
 import { Card } from '../../../../../../components/ui';
 import { RatingSummaryBadge } from '../../../../../../components/common/RatingSummaryBadge';
 import { ReviewsList } from '../../../../../../components/common/ReviewsList';
@@ -206,7 +207,9 @@ export default async function VehicleDetailPage({ params }: PageProps) {
               <SaveButton vehicleId={vehicle.id} className="flex-shrink-0 border border-border-subtle" />
             </div>
             <div className="mt-3.5 flex flex-wrap items-center gap-3.5 text-[13px] text-text-muted">
-              <RatingSummaryBadge subjectType="VEHICLE" subjectId={vehicle.id} size="sm" />
+              <RatingSummaryBadge subjectType="VEHICLE" subjectId={vehicle.id} size="sm" showRideCount={false} />
+              {/* The plate's ride count (plan A17), rendered server-side as plain text. */}
+              {rating?.rideCount ? <span>{rideCountLabel(rating.rideCount)}</span> : null}
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
                 {vehicle.showroom?.city ?? vehicle.locationText ?? '—'}

@@ -1,89 +1,96 @@
 import apiClient from './client';
-import type { ApiResponse, ProviderVehicle, VehicleImageFull } from '../../types/api.types';
+import type { ApiResponse, PaginationMeta } from '../../types/api.types';
+import type {
+  AddVehicleImagePayload,
+  CreateVehiclePayload,
+  FleetListFilters,
+  FleetPage,
+  FleetVehicle,
+  FleetVehicleImage,
+  FleetVehicleListItem,
+  FleetVehicleStatus,
+  UpdateVehiclePayload,
+} from '../../types/fleet.types';
 
-export interface CreateVehiclePayload {
-  title: string;
-  make: string;
-  model: string;
-  year: number;
-  transmission: string;
-  fuelType: string;
-  seatingCapacity: number;
-  engineType?: string;
-  pricePer6Hours?: number;
-  pricePer12Hours?: number;
-  pricePerDay: number;
-  pricePerWeek?: number;
-  pricePerMonth?: number;
-  locationText?: string;
-  availabilityNotes?: string;
-  pricingNotes?: string;
-  specialConditions?: string;
-  showroomId?: string;
-  features?: string[];
-}
+export type { CreateVehiclePayload, UpdateVehiclePayload, AddVehicleImagePayload };
 
-export type UpdateVehiclePayload = Partial<CreateVehiclePayload>;
+// The business's own cars (kerayego-backend vehicles.controller.ts), matching
+// the KerayeGo Partner app's api/vehicles.api.ts. Every call unwraps the
+// { success, data, meta } envelope.
 
-export interface AddVehicleImagePayload {
-  url: string;
-  publicId: string;
-  altText?: string;
-  width?: number;
-  height?: number;
-}
+/** Cars per page of GET /vehicles. */
+export const FLEET_PAGE_SIZE = 20;
 
-export interface VehicleListItem extends Omit<ProviderVehicle, 'features' | 'availabilityNotes' | 'pricingNotes' | 'specialConditions'> {
-  images: VehicleImageFull[];
-  _count?: { bookingRequests: number };
+/** POST /vehicles/:id/images answers 400 "Maximum 10 images per vehicle" past this. */
+export const MAX_VEHICLE_PHOTOS = 10;
+
+/** The GET /vehicles query: empty filters left out (an empty status is a 400). */
+export function fleetListParams(filters: FleetListFilters, page: number, limit = FLEET_PAGE_SIZE) {
+  const search = filters.search?.trim();
+  return {
+    page,
+    limit,
+    ...(filters.status && { status: filters.status }),
+    ...(search && { search }),
+  };
 }
 
 export const vehiclesApi = {
-  create: async (data: CreateVehiclePayload) => {
-    const res = await apiClient.post<ApiResponse<ProviderVehicle>>('/vehicles', data);
-    return res.data;
+  /** GET /vehicles — one page of the business's cars, newest first. */
+  list: async (filters: FleetListFilters, page = 1, limit = FLEET_PAGE_SIZE): Promise<FleetPage> => {
+    const res = await apiClient.get<ApiResponse<FleetVehicleListItem[]>>('/vehicles', {
+      params: fleetListParams(filters, page, limit),
+    });
+    return { data: res.data.data, meta: res.data.meta as PaginationMeta };
   },
 
-  getMyVehicles: async (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
-    const res = await apiClient.get<ApiResponse<VehicleListItem[]>>('/vehicles', { params });
-    return res.data;
+  /** GET /vehicles/:id — 404 when it isn't this business's car. */
+  get: async (id: string): Promise<FleetVehicle> => {
+    const res = await apiClient.get<ApiResponse<FleetVehicle>>(`/vehicles/${id}`);
+    return res.data.data;
   },
 
-  getVehicle: async (id: string) => {
-    const res = await apiClient.get<ApiResponse<ProviderVehicle>>(`/vehicles/${id}`);
-    return res.data;
+  /** POST /vehicles — a new DRAFT car without photos (business admin). */
+  create: async (payload: CreateVehiclePayload): Promise<FleetVehicle> => {
+    const res = await apiClient.post<ApiResponse<FleetVehicle>>('/vehicles', payload);
+    return res.data.data;
   },
 
-  update: async (id: string, data: UpdateVehiclePayload) => {
-    const res = await apiClient.patch<ApiResponse<ProviderVehicle>>(`/vehicles/${id}`, data);
-    return res.data;
+  /** PATCH /vehicles/:id — any status but ARCHIVED or SUSPENDED (business admin or manager). */
+  update: async (id: string, payload: UpdateVehiclePayload): Promise<FleetVehicle> => {
+    const res = await apiClient.patch<ApiResponse<FleetVehicle>>(`/vehicles/${id}`, payload);
+    return res.data.data;
   },
 
-  submitForReview: async (id: string) => {
-    const res = await apiClient.post<ApiResponse<ProviderVehicle>>(`/vehicles/${id}/submit-for-review`);
-    return res.data;
+  /** POST /vehicles/:id/submit-for-review — DRAFT with a photo; comes back APPROVED for an approved business. */
+  submitForReview: async (id: string): Promise<FleetVehicle> => {
+    const res = await apiClient.post<ApiResponse<FleetVehicle>>(`/vehicles/${id}/submit-for-review`);
+    return res.data.data;
   },
 
-  archive: async (id: string) => {
-    const res = await apiClient.delete<ApiResponse<{ id: string; status: string }>>(`/vehicles/${id}`);
-    return res.data;
+  /** DELETE /vehicles/:id — archives the car. No undo. */
+  archive: async (id: string): Promise<{ id: string; status: FleetVehicleStatus }> => {
+    const res = await apiClient.delete<ApiResponse<{ id: string; status: FleetVehicleStatus }>>(`/vehicles/${id}`);
+    return res.data.data;
   },
 
-  addImage: async (vehicleId: string, data: AddVehicleImagePayload) => {
-    const res = await apiClient.post<ApiResponse<VehicleImageFull>>(`/vehicles/${vehicleId}/images`, data);
-    return res.data;
+  /** POST /vehicles/:id/images — attaches an uploaded photo as the last one. */
+  addImage: async (vehicleId: string, payload: AddVehicleImagePayload): Promise<FleetVehicleImage> => {
+    const res = await apiClient.post<ApiResponse<FleetVehicleImage>>(`/vehicles/${vehicleId}/images`, payload);
+    return res.data.data;
   },
 
-  removeImage: async (vehicleId: string, imageId: string) => {
+  /** DELETE /vehicles/:id/images/:imageId — removes the photo and its stored file. */
+  removeImage: async (vehicleId: string, imageId: string): Promise<{ deleted: boolean }> => {
     const res = await apiClient.delete<ApiResponse<{ deleted: boolean }>>(`/vehicles/${vehicleId}/images/${imageId}`);
-    return res.data;
+    return res.data.data;
   },
 
-  reorderImages: async (vehicleId: string, imageIds: string[]) => {
-    const res = await apiClient.patch<ApiResponse<VehicleImageFull[]>>(
-      `/vehicles/${vehicleId}/images/reorder`,
-      { imageIds },
-    );
-    return res.data;
+  /** PATCH /vehicles/:id/images/reorder — ids in the new order (first = cover); returns every photo. */
+  reorderImages: async (vehicleId: string, imageIds: string[]): Promise<FleetVehicleImage[]> => {
+    const res = await apiClient.patch<ApiResponse<FleetVehicleImage[]>>(`/vehicles/${vehicleId}/images/reorder`, {
+      imageIds,
+    });
+    return res.data.data;
   },
 };

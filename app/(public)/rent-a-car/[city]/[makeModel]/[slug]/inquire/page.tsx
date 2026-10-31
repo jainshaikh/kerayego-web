@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { CheckCircle2, ChevronRight, Image as ImageIcon, Minus, Plus } from 'lucide-react';
 import { useAuth } from '../../../../../../../hooks/useAuth';
 import { useCreateBooking } from '../../../../../../../hooks/useBookings';
+import { getApiErrorMessage } from '../../../../../../../hooks/useAccountDeletion';
 import { useQuery } from '@tanstack/react-query';
 import { listingsApi } from '../../../../../../../lib/api/listings.api';
 import { getCurrencyCode } from '../../../../../../../lib/utils/currency';
@@ -256,10 +257,9 @@ export default function InquirePage() {
               {...register('message')}
             />
 
-            {createBooking.error && (
+            {createBooking.isError && (
               <div className="rounded-control border border-status-red-border bg-status-red-bg px-4 py-3 text-sm text-status-red-fg">
-                {(createBooking.error as { response?: { data?: { message?: string } } })?.response
-                  ?.data?.message ?? 'Something went wrong. Please try again.'}
+                {getApiErrorMessage(createBooking.error, 'Something went wrong. Please try again.')}
               </div>
             )}
 

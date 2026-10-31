@@ -6,13 +6,15 @@ import { useParams } from 'next/navigation';
 import {
   useAdminVehicleDetail,
   useApproveVehicle,
+  useCorrectVehiclePlate,
   useRejectVehicle,
 } from '../../../../../hooks/useAdmin';
 import { StatusBadge } from '../../../../../components/common/StatusBadge';
 import { cn } from '../../../../../lib/utils/cn';
 import { getCurrencyCode } from '../../../../../lib/utils/currency';
+import { getApiErrorMessage } from '../../../../../hooks/useAccountDeletion';
 
-type ModalType = 'approve' | 'reject' | null;
+type ModalType = 'approve' | 'reject' | 'plate' | null;
 
 export default function AdminVehicleDetailPage() {
   const params = useParams();
@@ -20,17 +22,21 @@ export default function AdminVehicleDetailPage() {
   const { data: vehicle, isLoading, isError } = useAdminVehicleDetail(id);
   const approve = useApproveVehicle();
   const reject = useRejectVehicle();
+  const correctPlate = useCorrectVehiclePlate();
 
   const [modal, setModal] = useState<ModalType>(null);
   const [noteInput, setNoteInput] = useState('');
   const [reasonInput, setReasonInput] = useState('');
+  const [plateInput, setPlateInput] = useState('');
   const [activeImage, setActiveImage] = useState(0);
 
-  const isPending = approve.isPending || reject.isPending;
+  const isPending = approve.isPending || reject.isPending || correctPlate.isPending;
 
-  const openModal = (type: 'approve' | 'reject') => {
+  const openModal = (type: Exclude<ModalType, null>) => {
     setNoteInput('');
     setReasonInput('');
+    setPlateInput(type === 'plate' ? (vehicle?.plateNumber ?? '') : '');
+    correctPlate.reset();
     setModal(type);
   };
 
@@ -38,6 +44,13 @@ export default function AdminVehicleDetailPage() {
     if (!modal || !vehicle) return;
     if (modal === 'approve') {
       await approve.mutateAsync({ id: vehicle.id, note: noteInput || undefined });
+    } else if (modal === 'plate') {
+      if (plateInput.trim().length < 2 || !reasonInput.trim()) return;
+      try {
+        await correctPlate.mutateAsync({ id: vehicle.id, plateNumber: plateInput.trim(), reason: reasonInput.trim() });
+      } catch {
+        return; // shown in the modal
+      }
     } else {
       if (!reasonInput.trim()) return;
       await reject.mutateAsync({ id: vehicle.id, reason: reasonInput });
@@ -90,6 +103,15 @@ export default function AdminVehicleDetailPage() {
             </div>
             <p className="text-sm text-slate-500 mt-1">
               {vehicle.year} · {vehicle.make} {vehicle.model} · {vehicle.transmission} · {vehicle.fuelType}
+            </p>
+            <p className="text-sm text-slate-500 mt-1">
+              Plate: <span className="font-medium text-slate-700">{vehicle.plateNumber || '—'}</span>{' '}
+              <button
+                onClick={() => openModal('plate')}
+                className="ml-1 text-xs font-semibold text-primary hover:underline"
+              >
+                Correct plate
+              </button>
             </p>
             {vehicle.rejectionReason && (
               <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-3 inline-block">
@@ -240,18 +262,65 @@ export default function AdminVehicleDetailPage() {
         </div>
       </div>
 
-      {/* Approve / Reject modal */}
+      {/* Approve / Reject / Correct plate modal */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="mb-1 text-lg font-semibold text-slate-900">
-              {modal === 'approve' ? 'Approve listing' : 'Reject listing'}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          onClick={() => setModal(null)}
+        >
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setModal(null)}
+              aria-label="Close"
+              className="absolute right-4 top-4 rounded-full p-1 text-xl leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              ×
+            </button>
+            <h2 className="mb-1 pr-8 text-lg font-semibold text-slate-900">
+              {modal === 'approve' ? 'Approve listing' : modal === 'plate' ? 'Correct plate number' : 'Reject listing'}
             </h2>
             <p className="mb-4 text-sm text-slate-500">
               <strong>{vehicle.title}</strong> by {provider.businessName}
             </p>
 
-            {modal === 'approve' ? (
+            {modal === 'plate' ? (
+              <div className="mb-4 space-y-3">
+                <p className="text-xs text-slate-500">
+                  The business can&rsquo;t change a live car&rsquo;s plate. The car&rsquo;s reviews and history follow the
+                  plate, so check the registration papers first.
+                </p>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Plate number <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    value={plateInput}
+                    onChange={(e) => setPlateInput(e.target.value.toUpperCase())}
+                    maxLength={20}
+                    placeholder="e.g. LEA-1234"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Reason <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={reasonInput}
+                    onChange={(e) => setReasonInput(e.target.value)}
+                    maxLength={500}
+                    placeholder="e.g. Typo — checked against the registration card"
+                    className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+                {correctPlate.isError && (
+                  <p className="text-xs text-red-600">
+                    {getApiErrorMessage(correctPlate.error, 'Could not correct the plate number')}
+                  </p>
+                )}
+              </div>
+            ) : modal === 'approve' ? (
               <div className="mb-4">
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Note <span className="font-normal normal-case text-slate-400">(optional)</span>
@@ -291,13 +360,21 @@ export default function AdminVehicleDetailPage() {
               </button>
               <button
                 onClick={handleConfirm}
-                disabled={isPending || (modal === 'reject' && !reasonInput.trim())}
+                disabled={
+                  isPending ||
+                  (modal === 'reject' && !reasonInput.trim()) ||
+                  (modal === 'plate' && (plateInput.trim().length < 2 || !reasonInput.trim()))
+                }
                 className={cn(
                   'rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60',
-                  modal === 'reject' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600',
+                  modal === 'reject'
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : modal === 'plate'
+                      ? 'bg-primary hover:opacity-90'
+                      : 'bg-green-500 hover:bg-green-600',
                 )}
               >
-                {isPending ? 'Saving…' : modal === 'approve' ? 'Approve' : 'Reject'}
+                {isPending ? 'Saving…' : modal === 'approve' ? 'Approve' : modal === 'plate' ? 'Save plate' : 'Reject'}
               </button>
             </div>
           </div>

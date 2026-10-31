@@ -36,6 +36,12 @@ export interface ReviewsResponse {
 export interface RatingSummary {
   count: number;
   average: number | null;
+  /**
+   * Car subjects (VEHICLE / USER_VEHICLE) only: completed rentals + carpool
+   * trips of the car's plate across every owner (0 without a plate). Absent
+   * for USER / PROVIDER subjects.
+   */
+  rideCount?: number;
 }
 
 // Mirrors reviews.service.ts getMyEligible(). bookingsAsCustomer rows carry the

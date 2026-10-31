@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { cnicNumberSchema } from './cnic.schema';
 
 const currentYear = new Date().getFullYear();
 
@@ -14,6 +15,8 @@ export const userVehicleSchema = z.object({
     .or(z.literal(0).transform(() => undefined)),
   color: z.string().max(30).optional().or(z.literal('')),
   plateNumber: z.string().min(2, 'Plate number is required').max(20),
+  // Optional in the API (older app builds); required here.
+  cnicNumber: cnicNumberSchema,
 });
 
 export type UserVehicleFormValues = z.infer<typeof userVehicleSchema>;

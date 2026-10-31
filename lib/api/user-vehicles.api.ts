@@ -23,6 +23,8 @@ export interface UserVehicle {
   country: Market;
   status: UserVehicleStatus;
   rejectionReason: string | null;
+  /** The owner's CNIC as given on the car form; null on older cars. */
+  cnicNumber?: string | null;
   createdAt: string;
   updatedAt: string;
   // sortOrder 0 is the poster/cover shown as the card thumbnail
@@ -57,6 +59,8 @@ export interface CreateUserVehiclePayload {
   year?: number;
   color?: string;
   plateNumber: string;
+  /** `12345-1234567-1`. A CNIC on the block list is refused (403 IDENTITY_BLOCKED). */
+  cnicNumber?: string;
   images?: UserVehicleImageInput[];
   cnicFrontUrl: string;
   cnicFrontPublicId: string;

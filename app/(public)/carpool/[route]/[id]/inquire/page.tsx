@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { CheckCircle2, ChevronRight, Minus, Plus } from 'lucide-react';
 import { useAuth } from '../../../../../../hooks/useAuth';
 import { useCreateTripInquiry } from '../../../../../../hooks/useTripInquiries';
+import { getApiErrorMessage } from '../../../../../../hooks/useAccountDeletion';
 import { useQuery } from '@tanstack/react-query';
 import { tripsApi } from '../../../../../../lib/api/trips.api';
 import { getCurrencyCode } from '../../../../../../lib/utils/currency';
@@ -251,10 +252,9 @@ export default function TripInquirePage() {
               {...register('message')}
             />
 
-            {createInquiry.error && (
+            {createInquiry.isError && (
               <div className="rounded-control border border-status-red-border bg-status-red-bg px-4 py-3 text-sm text-status-red-fg">
-                {(createInquiry.error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-                  'Something went wrong. Please try again.'}
+                {getApiErrorMessage(createInquiry.error, 'Something went wrong. Please try again.')}
               </div>
             )}
 

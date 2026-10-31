@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { adminApi } from '../lib/api/admin.api';
+import { adminApi, type ActivityLogQuery, type IdentityReviewStatus } from '../lib/api/admin.api';
 import type { DriverVerificationStatus } from '../types/enums';
+import { getApiErrorMessage } from './useAccountDeletion';
 
 export function useAdminOverview() {
   return useQuery({
@@ -36,6 +37,17 @@ export function useAdminProviderSummary(id: string) {
     queryFn: () => adminApi.getProviderSummary(id),
     staleTime: 30_000,
     enabled: !!id,
+  });
+}
+
+/** A business's own activity log (what its admins, managers and drivers did), paged. */
+export function useAdminProviderActivityLogs(id: string, query: ActivityLogQuery, enabled = true) {
+  return useQuery({
+    queryKey: ['admin', 'providers', 'activity-logs', id, query],
+    queryFn: () => adminApi.getProviderActivityLogs(id, query),
+    staleTime: 30_000,
+    enabled: !!id && enabled,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -110,6 +122,19 @@ export function useRejectVehicle() {
       toast.success('Vehicle rejected');
     },
     onError: () => toast.error('Failed to reject vehicle'),
+  });
+}
+
+/** PATCH /admin/vehicles/:id/plate — errors (plate blocked or taken) are shown inline by the caller. */
+export function useCorrectVehiclePlate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, plateNumber, reason }: { id: string; plateNumber: string; reason: string }) =>
+      adminApi.correctVehiclePlate(id, plateNumber, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'vehicles'] });
+      toast.success('Plate number corrected');
+    },
   });
 }
 
@@ -329,6 +354,80 @@ export function useActivateUser() {
   });
 }
 
+// ── Person blocks & identity reviews (A22, D18) ──────────────────────────
+// Errors are shown inline by the calling modal (getApiErrorMessage), not toasted.
+
+/** POST /admin/users/:id/block — suspends the account and blocks its CNIC(s), phone and email. */
+export function useBlockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => adminApi.blockUser(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'blocks'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'identity-reviews'] });
+      toast.success('Person blocked');
+    },
+  });
+}
+
+export function useAdminBlocks(page = 1, includeLifted = false) {
+  return useQuery({
+    queryKey: ['admin', 'blocks', page, includeLifted],
+    queryFn: () => adminApi.getBlocks(page, 20, includeLifted),
+    staleTime: 30_000,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** SUPER_ADMIN only. Lifting does not reactivate the blocked account. */
+export function useLiftBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => adminApi.liftBlock(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'blocks'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'identity-reviews'] });
+      toast.success('Block lifted');
+    },
+  });
+}
+
+export function useAdminIdentityReviews(page = 1, status: IdentityReviewStatus = 'PENDING') {
+  return useQuery({
+    queryKey: ['admin', 'identity-reviews', page, status],
+    queryFn: () => adminApi.getIdentityReviews(page, 20, status),
+    staleTime: 30_000,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useClearIdentityReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) => adminApi.clearIdentityReview(id, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'identity-reviews'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      toast.success('Account cleared');
+    },
+  });
+}
+
+export function useBlockIdentityReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      adminApi.blockIdentityReview(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'identity-reviews'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'blocks'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      toast.success('Person blocked');
+    },
+  });
+}
+
 // ── Audit logs ─────────────────────────────────────────────────────────────
 
 export function useAuditLogs(params: {
@@ -376,6 +475,22 @@ export function useDeleteReview() {
       toast.success('Review deleted and recorded in permanent log');
     },
     onError: () => toast.error('Failed to delete review (requires Super Admin)'),
+  });
+}
+
+/** SUPER_ADMIN only (A45): delete one business activity-log entry. The
+ * backend records the deletion, with the reason, in the permanent AdminActionLog. */
+export function useDeleteBusinessActivityLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      adminApi.deleteBusinessActivityLog(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'providers', 'summary'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'providers', 'activity-logs'] });
+      toast.success('Entry deleted and recorded in the permanent audit log');
+    },
+    onError: (error: unknown) => toast.error(getApiErrorMessage(error, 'Failed to delete the entry')),
   });
 }
 

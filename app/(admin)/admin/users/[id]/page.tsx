@@ -4,10 +4,23 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { useAdminUserDetail, useSuspendUser, useActivateUser } from '../../../../../hooks/useAdmin';
+import {
+  useAdminUserDetail,
+  useSuspendUser,
+  useActivateUser,
+  useBlockUser,
+} from '../../../../../hooks/useAdmin';
+import { useAuth } from '../../../../../hooks/useAuth';
+import { getApiErrorMessage } from '../../../../../hooks/useAccountDeletion';
+import type { BlockPersonResult } from '../../../../../lib/api/admin.api';
 import { StatusBadge } from '../../../../../components/common/StatusBadge';
-import { AdminPageHeader, AdminStat, RoleBadge } from '../../../../../components/admin';
-import { Avatar, Button, Card, ConfirmDialog, ErrorState } from '../../../../../components/ui';
+import {
+  AdminStat,
+  BlockResultSummary,
+  ReasonModal,
+  RoleBadge,
+} from '../../../../../components/admin';
+import { Avatar, Button, Card, ConfirmDialog, ErrorState, Modal } from '../../../../../components/ui';
 
 type ModalType = 'suspend' | 'activate' | null;
 
@@ -19,6 +32,10 @@ export default function AdminUserDetailPage() {
   const suspend = useSuspendUser();
   const activate = useActivateUser();
   const [modal, setModal] = useState<ModalType>(null);
+  const { isAdmin } = useAuth();
+  const blockUser = useBlockUser();
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockResult, setBlockResult] = useState<BlockPersonResult | null>(null);
 
   const isPending = suspend.isPending || activate.isPending;
 
@@ -43,6 +60,9 @@ export default function AdminUserDetailPage() {
   }
 
   const provider = user.providerProfile;
+  // Blocking is for customer/business accounts; a DELETED account has nothing left to block (409).
+  const canBlock =
+    isAdmin && (user.role === 'USER' || user.role === 'PROVIDER') && user.status !== 'DELETED';
 
   return (
     <div className="space-y-5">
@@ -81,7 +101,7 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
 
-          <div className="flex-shrink-0">
+          <div className="flex flex-shrink-0 flex-wrap gap-2.5">
             {user.status === 'SUSPENDED' ? (
               <Button onClick={() => setModal('activate')}>Activate user</Button>
             ) : user.role === 'USER' || user.role === 'PROVIDER' ? (
@@ -89,6 +109,17 @@ export default function AdminUserDetailPage() {
                 Suspend user
               </Button>
             ) : null}
+            {canBlock && (
+              <Button
+                variant="danger"
+                onClick={() => {
+                  blockUser.reset();
+                  setBlockOpen(true);
+                }}
+              >
+                Block person
+              </Button>
+            )}
           </div>
         </div>
       </Card>
@@ -186,6 +217,44 @@ export default function AdminUserDetailPage() {
           </div>
         </Card>
       )}
+
+      <ReasonModal
+        open={blockOpen}
+        onOpenChange={setBlockOpen}
+        title={`Block ${user.name}?`}
+        label="Reason"
+        placeholder="e.g. Fraud on several bookings — confirmed with the business"
+        confirmLabel="Block person"
+        loading={blockUser.isPending}
+        error={blockUser.isError ? getApiErrorMessage(blockUser.error, 'Could not block this person') : null}
+        onConfirm={async (reason) => {
+          try {
+            const result = await blockUser.mutateAsync({ id: user.id, reason });
+            setBlockOpen(false);
+            setBlockResult(result);
+          } catch {
+            // shown in the modal
+          }
+        }}
+      >
+        <p>
+          This account is suspended, and this person&rsquo;s CNIC, phone and email are kept on a
+          block list (as one-way codes, not readable). On any future account, a matching CNIC or
+          email is refused, and a matching phone puts the account on hold until KerayeGo checks it.
+        </p>
+        <p className="mt-2">
+          Any other account that already uses the same CNIC or phone is put on hold for review.
+        </p>
+      </ReasonModal>
+
+      <Modal
+        open={!!blockResult}
+        onOpenChange={(open) => !open && setBlockResult(null)}
+        title={`${user.name} is blocked`}
+        footer={<Button onClick={() => setBlockResult(null)}>Done</Button>}
+      >
+        {blockResult && <BlockResultSummary result={blockResult} />}
+      </Modal>
 
       <ConfirmDialog
         open={!!modal}

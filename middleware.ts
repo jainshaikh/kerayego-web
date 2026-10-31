@@ -2,15 +2,21 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Routes that require authentication — any matching prefix triggers auth check
-const PROTECTED_ROUTES = ['/dashboard', '/provider/', '/admin'];
+const PROTECTED_ROUTES = ['/dashboard', '/provider/', '/driver/', '/admin'];
 
 // Routes only accessible to unauthenticated users — redirect logged-in users away
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
 
-// Role-to-route mapping — wrong role gets redirected to their correct dashboard
+// Role-to-route mapping — wrong role gets redirected to their correct dashboard.
+// /provider/ (business portal) and /driver/ (driver portal) are open to both
+// USER and PROVIDER accounts: business access is decided by business
+// membership (owner, manager, driver), not by the account role, and a manager
+// or driver is an ordinary USER account. Which page a person actually sees
+// there is decided client-side from GET /users/me/workspaces (hooks/
+// useWorkspace.ts) — and, as everywhere, enforced only by the backend.
 const ROLE_ROUTES: Record<string, string[]> = {
-  USER: ['/dashboard'],
-  PROVIDER: ['/provider/'],
+  USER: ['/dashboard', '/provider/', '/driver/'],
+  PROVIDER: ['/provider/', '/driver/'],
   ADMIN: ['/admin'],
   SUPER_ADMIN: ['/admin'],
 };
@@ -20,11 +26,21 @@ const ROLE_ROUTES: Record<string, string[]> = {
 // — e.g. the public "Post your trip" CTA pointing at /dashboard/trips/new —
 // lands the other role on its own copy instead of bouncing to its dashboard.
 // `inquiries` is deliberately absent: the two pages share a name, not content.
-const SHARED_ROLE_SECTIONS = ['trips', 'trip-inquiries', 'my-vehicles', 'incoming-requests', 'reviews'];
+const SHARED_ROLE_SECTIONS = [
+  'trips',
+  'trip-inquiries',
+  'my-vehicles',
+  'incoming-requests',
+  'reviews',
+];
 
 function sharedSectionTarget(pathname: string, userRole: string): string | null {
   const [from, to] =
-    userRole === 'PROVIDER' ? ['/dashboard/', '/provider/'] : userRole === 'USER' ? ['/provider/', '/dashboard/'] : [];
+    userRole === 'PROVIDER'
+      ? ['/dashboard/', '/provider/']
+      : userRole === 'USER'
+        ? ['/provider/', '/dashboard/']
+        : [];
   if (!from || !to || !pathname.startsWith(from)) return null;
   const rest = pathname.slice(from.length);
   const section = rest.split('/')[0];
@@ -89,16 +105,20 @@ export function middleware(request: NextRequest) {
 
     // Role-based access control
     if (userRole) {
+      // The shared carpool sections map to the role's own copy first — a USER
+      // is allowed into /provider/ (business portal) but its own carpool
+      // pages are still the /dashboard ones.
+      const sharedTarget = sharedSectionTarget(pathname, userRole);
+      if (sharedTarget) {
+        const url = new URL(sharedTarget, request.url);
+        url.search = request.nextUrl.search;
+        return NextResponse.redirect(url);
+      }
+
       const allowedPrefixes = ROLE_ROUTES[userRole] || [];
       const isAllowed = allowedPrefixes.some((prefix) => pathname.startsWith(prefix));
 
       if (!isAllowed) {
-        const sharedTarget = sharedSectionTarget(pathname, userRole);
-        if (sharedTarget) {
-          const url = new URL(sharedTarget, request.url);
-          url.search = request.nextUrl.search;
-          return NextResponse.redirect(url);
-        }
         // User is authenticated but accessing wrong role's area → redirect to their dashboard
         const correctDashboard = ROLE_DASHBOARDS[userRole] || '/dashboard';
         return NextResponse.redirect(new URL(correctDashboard, request.url));
@@ -111,7 +131,5 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   // Run middleware on these paths only — skip static files, API routes, Next.js internals
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|images|icons|fonts).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|images|icons|fonts).*)'],
 };

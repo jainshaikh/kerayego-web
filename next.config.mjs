@@ -33,9 +33,10 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
             // geolocation=(self) — the "Use my location" nearby-search feature
-            // (HeroSearch, VehiclesView, ProvidersView) needs this.
+            // (HeroSearch, VehiclesView, ProvidersView) needs this. camera=(self) — a
+            // driver's live identity selfie in the web driver setup (plan A59, A69).
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(self)',
+            value: 'camera=(self), microphone=(), geolocation=(self)',
           },
         ],
       },

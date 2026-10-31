@@ -10,3 +10,9 @@ export {
 } from './AdminTable';
 export { RoleBadge, ActionBadge, AdminStat } from './AdminBadges';
 export { ApproveDialog } from './ApproveDialog';
+export {
+  ReasonModal,
+  IdentifierHints,
+  BlockResultSummary,
+  identifierKindLabel,
+} from './PersonBlockParts';

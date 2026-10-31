@@ -7,6 +7,7 @@ import {
   type UpdateTripInquiryStatusPayload,
 } from '../lib/api/trip-inquiries.api';
 import { trackEvent } from '../lib/utils/analytics';
+import { getApiErrorMessage } from './useAccountDeletion';
 
 // ── Rider hooks ─────────────────────────────────────────────────────────────
 
@@ -40,8 +41,9 @@ export function useCreateTripInquiry() {
       qc.invalidateQueries({ queryKey: ['trip'] });
       trackEvent('join_ride', { trip_id: variables.tripId, seats: variables.requestedSeats });
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err?.response?.data?.message ?? 'Failed to send request');
+    // Shows the server's message, e.g. the hold message on 403 IDENTITY_ON_HOLD.
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, 'Failed to send request'));
     },
   });
 }

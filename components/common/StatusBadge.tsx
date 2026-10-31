@@ -23,6 +23,8 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   completed: 'teal',
   unverified: 'slate',
   verified: 'emerald',
+  cleared: 'emerald',
+  blocked: 'red',
 };
 
 const TONE_STYLES: Record<StatusTone, string> = {
@@ -54,6 +56,9 @@ const LABEL_MAP: Record<string, string> = {
   // DriverVerificationStatus (PENDING_REVIEW/REJECTED reuse the labels above)
   UNVERIFIED: 'Not submitted',
   VERIFIED: 'Verified',
+  // IdentityReview status (person blocks)
+  CLEARED: 'Cleared',
+  BLOCKED: 'Blocked',
 };
 
 interface StatusBadgeProps {

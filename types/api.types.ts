@@ -40,6 +40,9 @@ export interface User {
   role: Role;
   status: UserStatus;
   emailVerified: boolean;
+  /** True while KerayeGo checks the account after its phone matched a blocked person:
+   * browsing works, but booking, posting trips, requesting seats and driving are paused. */
+  identityHold?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +54,8 @@ export interface AuthUser {
   role: Role;
   status: UserStatus;
   emailVerified: boolean;
+  /** See User.identityHold. */
+  identityHold?: boolean;
 }
 
 export interface LoginResponse {
@@ -71,6 +76,8 @@ export interface ProviderProfile {
   verificationStatus: ProviderStatus;
   rejectionReason: string | null;
   isFeatured: boolean;
+  /** Owner's CNIC (`12345-1234567-1`), returned only to the owner (GET /providers/me) and admin. */
+  ownerCnicNumber?: string | null;
   createdAt: string;
   updatedAt: string;
 }

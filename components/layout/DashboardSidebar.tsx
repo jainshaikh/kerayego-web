@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/utils/cn';
 import { Logo } from '../common/Logo';
+import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher';
 
 const NAV_ITEMS = [
   {
@@ -160,6 +161,11 @@ export function DashboardSidebar() {
           <p className="truncate text-sm font-semibold text-white/70">{user.email}</p>
         </div>
       )}
+
+      {/* The same account may also run or work for a rental business, or drive for one */}
+      <div className="border-b border-white/10 px-4 py-4">
+        <WorkspaceSwitcher current="personal" />
+      </div>
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 px-3 py-4">

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { bookingsApi, type BookingStatus, type CreateBookingRequestData, type UpdateBookingStatusData } from '../lib/api/bookings.api';
 import { trackEvent } from '../lib/utils/analytics';
+import { getApiErrorMessage } from './useAccountDeletion';
 
 // ── User hooks ──────────────────────────────────────────────────────────────
 
@@ -36,8 +37,9 @@ export function useCreateBooking() {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       trackEvent('complete_booking', { vehicle_id: variables.vehicleId });
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err?.response?.data?.message ?? 'Failed to send inquiry');
+    // Shows the server's message, e.g. the hold message on 403 IDENTITY_ON_HOLD.
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, 'Failed to send inquiry'));
     },
   });
 }
@@ -57,7 +59,8 @@ export function useUpdateBookingStatus() {
       bookingsApi.updateStatus(id, data),
     onSuccess: (updated, { data }) => {
       qc.invalidateQueries({ queryKey: ['bookings'] });
-      qc.invalidateQueries({ queryKey: ['provider-inquiries'] });
+      // The business inbox (hooks/useBookingRequests.ts), for someone who is both.
+      qc.invalidateQueries({ queryKey: ['booking-requests'] });
       qc.setQueryData(['bookings', updated.id], updated);
       const msg = STATUS_TOAST[data.newStatus];
       if (msg) toast.success(msg);
@@ -65,14 +68,3 @@ export function useUpdateBookingStatus() {
     onError: () => toast.error('Failed to update status'),
   });
 }
-
-// ── Provider hooks ─────────────────────────────────────────────────────────
-
-export function useProviderInquiries(status?: BookingStatus, page = 1, limit = 20) {
-  return useQuery({
-    queryKey: ['provider-inquiries', status, page, limit],
-    queryFn: () => bookingsApi.getProviderInquiries(status, page, limit),
-    staleTime: 30_000,
-  });
-}
-

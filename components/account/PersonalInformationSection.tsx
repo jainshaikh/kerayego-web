@@ -69,6 +69,8 @@ export function PersonalInformationSection() {
         role: updated.role,
         status: updated.status,
         emailVerified: updated.emailVerified,
+        // A new phone that matches a blocked person puts the account on hold.
+        identityHold: updated.identityHold,
       });
       toast.success('Personal information updated');
     } catch (error: unknown) {
