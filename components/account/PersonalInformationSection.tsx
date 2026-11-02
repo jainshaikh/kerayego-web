@@ -1,26 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { usersApi } from '../../lib/api/users.api';
 import { authApi } from '../../lib/api/auth.api';
-import { useAuthStore } from '../../store/auth.store';
-import { Button, Card, Input } from '../ui';
+import { useApplyUser, useMe } from '../../hooks/usePhoneVerification';
+import { formatPhoneForDisplay } from '../../lib/utils/phone';
+import { StatusBadge } from '../common/StatusBadge';
+import { Button, Card, Input, Modal } from '../ui';
+import { PhoneVerificationFlow } from './PhoneVerificationFlow';
+import { WhatsAppUpdatesCard } from './WhatsAppUpdatesCard';
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
 interface ProfileFormValues {
   name: string;
-  phone: string;
-}
-
-interface PasswordFormValues {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
 }
 
 function extractMessage(error: unknown, fallback: string): string {
@@ -31,23 +27,18 @@ function extractMessage(error: unknown, fallback: string): string {
 }
 
 export function PersonalInformationSection() {
-  const queryClient = useQueryClient();
-  const setUser = useAuthStore((s) => s.setUser);
-
-  const { data: me, isLoading } = useQuery({
-    queryKey: ['users', 'me'],
-    queryFn: () => usersApi.getMe().then((r) => r.data),
-  });
+  const applyUser = useApplyUser();
+  const { data: me, isLoading } = useMe();
 
   const [savingProfile, setSavingProfile] = useState(false);
-  const [savingPassword, setSavingPassword] = useState(false);
+  // The mobile number changes only through a WhatsApp code (send-code → verify).
+  const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   const profileForm = useForm<ProfileFormValues>({
-    values: me ? { name: me.name, phone: me.phone ?? '' } : undefined,
+    values: me ? { name: me.name } : undefined,
   });
-  const passwordForm = useForm<PasswordFormValues>();
 
   useEffect(() => {
     if (cooldown === 0) return;
@@ -58,45 +49,13 @@ export function PersonalInformationSection() {
   const onSaveProfile = async (values: ProfileFormValues) => {
     setSavingProfile(true);
     try {
-      const updated = await usersApi
-        .updateMe({ name: values.name, phone: values.phone || undefined })
-        .then((r) => r.data);
-      queryClient.setQueryData(['users', 'me'], updated);
-      setUser({
-        id: updated.id,
-        name: updated.name,
-        email: updated.email,
-        role: updated.role,
-        status: updated.status,
-        emailVerified: updated.emailVerified,
-        // A new phone that matches a blocked person puts the account on hold.
-        identityHold: updated.identityHold,
-      });
+      const updated = await usersApi.updateMe({ name: values.name }).then((r) => r.data);
+      applyUser(updated);
       toast.success('Personal information updated');
     } catch (error: unknown) {
       toast.error(extractMessage(error, 'Failed to update information'));
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const onChangePassword = async (values: PasswordFormValues) => {
-    if (values.newPassword !== values.confirmPassword) {
-      passwordForm.setError('confirmPassword', { message: 'Passwords do not match' });
-      return;
-    }
-    setSavingPassword(true);
-    try {
-      const res = await authApi.changePassword({
-        currentPassword: values.currentPassword,
-        newPassword: values.newPassword,
-      });
-      toast.success(res.data.message);
-      passwordForm.reset();
-    } catch (error: unknown) {
-      toast.error(extractMessage(error, 'Failed to change password'));
-    } finally {
-      setSavingPassword(false);
     }
   };
 
@@ -156,12 +115,37 @@ export function PersonalInformationSection() {
             {...profileForm.register('name', { required: 'Name is required' })}
             error={profileForm.formState.errors.name?.message}
           />
-          <Input
-            label="Phone"
-            type="tel"
-            {...profileForm.register('phone')}
-            error={profileForm.formState.errors.phone?.message}
-          />
+          <div>
+            <p className="mb-2 text-sm font-medium text-ink">Mobile number</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-control border border-border-subtle bg-page px-3.5 py-2.5">
+              <span className="text-[15px] text-ink">
+                {me.phone ? formatPhoneForDisplay(me.phone) : 'No number yet'}
+              </span>
+              {me.phoneVerified ? (
+                <>
+                  <StatusBadge status="verified" label="Verified" size="sm" />
+                  <button
+                    type="button"
+                    onClick={() => setPhoneDialogOpen(true)}
+                    className="ml-auto text-sm font-semibold text-brand-600 hover:underline"
+                  >
+                    Change number
+                  </button>
+                </>
+              ) : (
+                <span className="text-sm text-text-muted">
+                  Not verified ·{' '}
+                  <button
+                    type="button"
+                    onClick={() => setPhoneDialogOpen(true)}
+                    className="font-semibold text-brand-600 hover:underline"
+                  >
+                    Verify
+                  </button>
+                </span>
+              )}
+            </div>
+          </div>
           <Input label="Email" value={me.email} disabled readOnly />
           <Button type="submit" loading={savingProfile}>
             Save changes
@@ -169,39 +153,25 @@ export function PersonalInformationSection() {
         </form>
       </Card>
 
-      {/* Change password form */}
-      <Card className="p-5">
-        <p className="mb-4 text-sm font-semibold text-ink">Change password</p>
-        <form onSubmit={passwordForm.handleSubmit(onChangePassword)} className="space-y-4">
-          <Input
-            label="Current password"
-            type="password"
-            autoComplete="current-password"
-            {...passwordForm.register('currentPassword', { required: 'Required' })}
-            error={passwordForm.formState.errors.currentPassword?.message}
+      <WhatsAppUpdatesCard me={me} />
+
+      <Modal
+        open={phoneDialogOpen}
+        onOpenChange={setPhoneDialogOpen}
+        title={me.phoneVerified ? 'Change mobile number' : 'Verify your mobile number'}
+        description="We'll send a 6-digit code to the number on WhatsApp."
+      >
+        {/* Mounted only while open, so each opening starts at step 1. */}
+        {phoneDialogOpen ? (
+          <PhoneVerificationFlow
+            initialPhone={me.phoneVerified ? null : me.phone}
+            onVerified={() => {
+              setPhoneDialogOpen(false);
+              toast.success('Your mobile number is verified.');
+            }}
           />
-          <Input
-            label="New password"
-            type="password"
-            autoComplete="new-password"
-            {...passwordForm.register('newPassword', {
-              required: 'Required',
-              minLength: { value: 8, message: 'At least 8 characters' },
-            })}
-            error={passwordForm.formState.errors.newPassword?.message}
-          />
-          <Input
-            label="Confirm new password"
-            type="password"
-            autoComplete="new-password"
-            {...passwordForm.register('confirmPassword', { required: 'Required' })}
-            error={passwordForm.formState.errors.confirmPassword?.message}
-          />
-          <Button type="submit" loading={savingPassword}>
-            Change password
-          </Button>
-        </form>
-      </Card>
+        ) : null}
+      </Modal>
     </div>
   );
 }

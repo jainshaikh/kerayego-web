@@ -9,7 +9,7 @@ export { Pagination } from './Pagination';
 export { EmptyState, ErrorState } from './EmptyState';
 export { WhatsAppButton } from './WhatsAppButton';
 export { Avatar } from './Avatar';
-export { Checkbox, PillToggle, RadioCard } from './Selection';
+export { Checkbox, PillToggle, RadioCard, Switch } from './Selection';
 export { Stepper, type StepDefinition } from './Stepper';
 export { BackButton } from './BackButton';
 export { RatingStars, RatingBadge } from './RatingStars';

@@ -29,7 +29,9 @@ export type DriverJobBookingStatus =
   | 'IN_PROGRESS'
   | 'REJECTED'
   | 'CANCELLED'
-  | 'COMPLETED';
+  | 'COMPLETED'
+  /** Terminal, set by the backend: the booked period ended before the job was started. */
+  | 'NOT_STARTED';
 
 /** The assigned driver's own answer to a job (BookingRequest.driverJobStatus). */
 export type DriverJobAnswer = 'PENDING' | 'ACCEPTED' | 'DECLINED';
@@ -236,13 +238,20 @@ export interface DriverUploadResult {
 
 // ─── Businesses ─────────────────────────────────────────────────────────────
 
-/** GET /driver/businesses — every membership of the account (any role, any status). */
+/**
+ * GET /driver/businesses — memberships linked to the account plus pending
+ * invites addressed to its email (listed only once that email is confirmed).
+ */
 export interface DriverLinkedBusiness {
   id: string;
   providerProfileId: string;
   role: BusinessRole;
   status: MembershipStatus;
   invitedAt: string;
+  /** When a pending invite runs out (7 days after it was sent); null on legacy rows. */
+  expiresAt: string | null;
+  /** A pending invite past its 7 days — it can't be accepted; the business must send it again. */
+  expired: boolean;
   joinedAt: string | null;
   providerProfile: {
     id: string;

@@ -22,7 +22,16 @@ export const JOB_STATUS_LABELS: Record<DriverJobBookingStatus, string> = {
   REJECTED: 'Rejected',
   CANCELLED: 'Cancelled',
   COMPLETED: 'Completed',
+  NOT_STARTED: 'Not started',
 };
+
+/** Bookings that are over: no reply, start or end is possible any more. */
+const FINISHED_JOB_STATUSES: ReadonlySet<DriverJobBookingStatus> = new Set<DriverJobBookingStatus>([
+  'REJECTED',
+  'CANCELLED',
+  'COMPLETED',
+  'NOT_STARTED',
+]);
 
 /** The driver's own answer, shown next to the status unless it is ACCEPTED. */
 export const JOB_ANSWER_LABELS: Record<DriverJobAnswer, string> = {
@@ -40,7 +49,8 @@ export const MEMBERSHIP_STATUS_LABELS: Record<MembershipStatus, string> = {
 
 /** Which buttons and notes a job shows. */
 export function jobState(job: Pick<DriverAssignedJob, 'status' | 'driverJobStatus' | 'isOneWay'>) {
-  const isPendingResponse = job.driverJobStatus === 'PENDING';
+  // A booking that is over (e.g. NOT_STARTED) can't be answered any more.
+  const isPendingResponse = job.driverJobStatus === 'PENDING' && !FINISHED_JOB_STATUSES.has(job.status);
   const isAccepted = job.driverJobStatus === 'ACCEPTED';
   const isInProgress = job.status === 'IN_PROGRESS';
   const isCompleted = job.status === 'COMPLETED';
@@ -48,6 +58,8 @@ export function jobState(job: Pick<DriverAssignedJob, 'status' | 'driverJobStatu
     isPendingResponse,
     isInProgress,
     isCompleted,
+    /** The booked period ended before the job was started — closed by KerayeGo; not a ride, not rateable. */
+    isNotStarted: job.status === 'NOT_STARTED',
     /** Accepted and waiting to start — the app would show "Start job". */
     awaitingStart: isAccepted && job.status === 'ACCEPTED',
     /** Only a one-way job leaves the car away from home, with a return leg to fill. */
@@ -106,6 +118,11 @@ export function groupDriverBusinesses(memberships: readonly DriverLinkedBusiness
     active: driving.filter((m) => m.status === 'ACTIVE'),
     invitations: driving.filter((m) => m.status === 'INVITED'),
   };
+}
+
+/** A pending invitation whose 7 days are up — it can't be accepted; the business must send it again. */
+export function isExpiredInvitation(member: Pick<DriverLinkedBusiness, 'status' | 'expired'>): boolean {
+  return member.status === 'INVITED' && member.expired === true;
 }
 
 /**

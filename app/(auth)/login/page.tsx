@@ -2,57 +2,49 @@
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 
-import { loginSchema, type LoginFormValues } from '../../../lib/validations/auth.schema';
+import { requestCodeSchema, type RequestCodeFormValues } from '../../../lib/validations/auth.schema';
 import { useAuth } from '../../../hooks/useAuth';
+import { getApiErrorMessage } from '../../../hooks/useAccountDeletion';
+import { SignInCodeStep } from '../../../components/auth/SignInCodeStep';
 import { Button, Card, Input } from '../../../components/ui';
+
+interface CodeSent {
+  email: string;
+  message: string;
+  resendAfterSeconds: number;
+}
 
 function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const [codeSent, setCodeSent] = useState<CodeSent | null>(null);
   const searchParams = useSearchParams();
   // middleware.ts uses `callbackUrl` for protected-route redirects; the
   // vehicle/trip inquiry flows use `redirect` — accept either so signing in
   // from either path lands the user back where they actually meant to go,
   // instead of silently falling through to their dashboard.
   const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect');
-  const { login, getDashboardRoute } = useAuth();
+  const { requestCode } = useAuth();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<RequestCodeFormValues>({
+    resolver: zodResolver(requestCodeSchema),
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = async ({ email }: RequestCodeFormValues) => {
     setIsLoading(true);
     try {
-      // login() sets userRole/emailVerified cookies and updates the store
-      const authUser = await login(data);
-
-      if (!authUser.emailVerified) {
-        toast.success('Welcome back! Please verify your email to continue.');
-        router.push(callbackUrl ? `/verify-email?redirect=${encodeURIComponent(callbackUrl)}` : '/verify-email');
-        router.refresh();
-        return;
-      }
-
-      toast.success('Welcome back!');
-      // Pass authUser directly — getDashboardRoute() can't read the store update until re-render
-      const destination = callbackUrl || getDashboardRoute(authUser);
-      router.push(destination);
-      router.refresh();
+      const result = await requestCode(email);
+      setCodeSent({ email, message: result.message, resendAfterSeconds: result.resendAfterSeconds });
     } catch (error: unknown) {
-      const message =
-        (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data
-          ?.error?.message || 'Login failed. Please check your credentials.';
-      toast.error(message);
+      toast.error(getApiErrorMessage(error, 'Could not send a code. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -62,42 +54,42 @@ function LoginPageContent() {
     <div className="mx-auto w-full max-w-md">
       <Card padding="lg" className="rounded-sheet shadow-sm">
         <div className="mb-7">
-          <h1 className="text-2xl font-bold tracking-tight text-ink">Welcome back</h1>
-          <p className="mt-1 text-sm text-text-muted">Sign in to your account to continue</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">
+            {codeSent ? 'Enter your code' : 'Welcome back'}
+          </h1>
+          {!codeSent && (
+            <p className="mt-1 text-sm text-text-muted">
+              Enter your email and we&apos;ll send you a 6-digit code.
+            </p>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <Input
-            label="Email address"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            disabled={isLoading}
-            error={errors.email?.message}
-            {...register('email')}
+        {codeSent ? (
+          <SignInCodeStep
+            email={codeSent.email}
+            message={codeSent.message}
+            resendAfterSeconds={codeSent.resendAfterSeconds}
+            callbackUrl={callbackUrl}
+            welcomeMessage="Welcome back!"
+            onChangeEmail={() => setCodeSent(null)}
           />
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label className="text-[13px] font-semibold text-slate-700">Password</label>
-              <Link href="/forgot-password" className="text-[13px] font-semibold text-brand-600 hover:underline">
-                Forgot password?
-              </Link>
-            </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <Input
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
+              label="Email address"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
               disabled={isLoading}
-              error={errors.password?.message}
-              {...register('password')}
+              error={errors.email?.message}
+              {...register('email')}
             />
-          </div>
 
-          <Button type="submit" size="lg" className="w-full" loading={isLoading}>
-            Sign in
-          </Button>
-        </form>
+            <Button type="submit" size="lg" className="w-full" loading={isLoading}>
+              Send code
+            </Button>
+          </form>
+        )}
 
         <p className="mt-6 text-center text-sm text-text-muted">
           Don&apos;t have an account?{' '}

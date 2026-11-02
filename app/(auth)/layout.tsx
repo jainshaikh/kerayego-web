@@ -21,7 +21,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <BackButton />
       </header>
 
-      {/* Content area — width is controlled per-page (login/forgot/reset/verify
+      {/* Content area — width is controlled per-page (login/verify
           stay a narrow centered card; register spans wider for its split panel) */}
       <main className="flex flex-1 items-center justify-center px-4 py-12">{children}</main>
 

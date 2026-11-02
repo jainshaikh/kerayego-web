@@ -13,14 +13,27 @@ export const teamApi = {
   },
 
   /**
-   * POST /providers/me/team/invites — invite a manager or driver. 409 when the
-   * email is already invited or a member here, or (manager) when the person
-   * owns a business or already manages another one.
+   * POST /providers/me/team/invites — invite a manager or driver (addressed to
+   * the email only; the row comes back with user/userId null). 409 when the
+   * email has an open invite or is a member here. Inviting an email whose
+   * invite expired re-sends that same row with a fresh 7 days.
    */
   inviteMember: async (payload: InviteTeamMemberPayload) => {
     const res = await apiClient.post<ApiResponse<BusinessTeamMember>>(
       '/providers/me/team/invites',
       payload,
+    );
+    return res.data.data;
+  },
+
+  /**
+   * POST /providers/me/team/:memberId/reinvite — re-send a pending invite
+   * (expired or not) with a fresh 7 days. 409 for any other status; a manager
+   * re-invites drivers only (403). Returns the team row.
+   */
+  reinviteMember: async (memberId: string) => {
+    const res = await apiClient.post<ApiResponse<BusinessTeamMember>>(
+      `/providers/me/team/${memberId}/reinvite`,
     );
     return res.data.data;
   },

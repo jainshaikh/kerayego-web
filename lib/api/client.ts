@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
+import { usePhoneGateStore } from '../../store/phone-gate.store';
 
 // Exported so the /ride Socket.IO client (lib/realtime/ride-socket.ts) can
 // derive the gateway's origin from the same source instead of re-reading the
@@ -76,12 +77,27 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Only attempt refresh on 401 from non-auth endpoints, and only once
+    // 403 PHONE_NOT_VERIFIED from any gated endpoint: the account must verify
+    // its mobile number. PhoneGateListener refetches /users/me and the verify
+    // screen takes over. Never a token refresh — the caller still gets the error.
+    if (
+      error.response?.status === 403 &&
+      (error.response.data as { error?: { code?: string } } | undefined)?.error?.code ===
+        'PHONE_NOT_VERIFIED'
+    ) {
+      usePhoneGateStore.getState().raise();
+      return Promise.reject(error);
+    }
+
+    // Only attempt refresh on 401 from non-auth endpoints, and only once.
+    // A wrong sign-in code is a 401 (CODE_INVALID) — the caller shows it.
+    // Only 401 refreshes: the /users/me/phone/* endpoints answer 400/403/409/
+    // 429/502/503 (a wrong WhatsApp code is a 400 CODE_INVALID), never 401.
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/refresh') &&
-      !originalRequest.url?.includes('/auth/login')
+      !originalRequest.url?.includes('/auth/code/')
     ) {
       originalRequest._retry = true;
 

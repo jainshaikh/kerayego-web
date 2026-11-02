@@ -173,7 +173,7 @@ export default function AdminProviderDetailPage() {
 
           <Card className="p-5 space-y-3">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-text-faint">Bookings & Rides Breakdown (A31)</h2>
-            <div className="grid grid-cols-3 gap-2 text-center pt-1">
+            <div className="grid grid-cols-2 gap-2 text-center pt-1 sm:grid-cols-4">
               <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
                 <p className="text-lg font-semibold text-emerald-600 font-mono">{summary.bookings.inProgress}</p>
                 <p className="text-[11px] text-text-muted">In Progress</p>
@@ -181,6 +181,10 @@ export default function AdminProviderDetailPage() {
               <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
                 <p className="text-lg font-semibold text-ink font-mono">{summary.bookings.completed}</p>
                 <p className="text-[11px] text-text-muted">Completed</p>
+              </div>
+              <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
+                <p className="text-lg font-semibold text-slate-600 font-mono">{summary.bookings.notStarted ?? 0}</p>
+                <p className="text-[11px] text-text-muted">Not started</p>
               </div>
               <div className="rounded-lg border border-border-subtle p-2.5 bg-page">
                 <p className="text-lg font-semibold text-rose-600 font-mono">

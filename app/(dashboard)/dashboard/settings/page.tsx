@@ -8,7 +8,7 @@ export default function DashboardSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Account Settings</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Manage your personal information, password, and email verification.
+          Manage your personal information, mobile number and WhatsApp updates.
         </p>
       </div>
 

@@ -97,7 +97,7 @@ const STATUS_MOVE_REFUSED = /cannot (change status|transition)|already exists/i;
  * The message for a failed status change:
  * - accepting with a driver who can't take it (400/409 about the driver): say so;
  * - 400 without field errors: the request changed meanwhile (usually the customer cancelled);
- * - 409: the backend keeps one request per customer, car and status.
+ * - 409: someone else changed the booking at the same moment — same as a 400.
  */
 export function statusUpdateErrorMessage(error: unknown, options: { withDriver?: boolean } = {}): string {
   const info = apiErrorInfo(error);
@@ -114,11 +114,8 @@ export function statusUpdateErrorMessage(error: unknown, options: { withDriver?:
       .join(', ');
     return `This driver can’t take this booking (${reason}). Pick another driver or choose Assign later.`;
   }
-  if (info.kind === 'validation' && !info.hasFieldErrors) {
+  if ((info.kind === 'validation' && !info.hasFieldErrors) || info.kind === 'conflict') {
     return 'This request changed since you opened it. Its latest status is shown now.';
-  }
-  if (info.kind === 'conflict') {
-    return 'This customer already has an earlier request for this car with that status, so this one can’t be updated yet. Please contact KerayeGo support.';
   }
   return info.message;
 }

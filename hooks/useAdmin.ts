@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { adminApi, type ActivityLogQuery, type IdentityReviewStatus } from '../lib/api/admin.api';
+import {
+  adminApi,
+  type ActivityLogQuery,
+  type AdminUser,
+  type IdentityReviewStatus,
+  type PagedResponse,
+} from '../lib/api/admin.api';
 import type { DriverVerificationStatus } from '../types/enums';
 import { getApiErrorMessage } from './useAccountDeletion';
 
@@ -351,6 +357,27 @@ export function useActivateUser() {
       toast.success('User activated');
     },
     onError: () => toast.error('Failed to activate user'),
+  });
+}
+
+/** POST /admin/users/:id/release-phone — removes the number; the returned row replaces the cached one. */
+export function useReleaseUserPhone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => adminApi.releaseUserPhone(id, reason),
+    onSuccess: (row) => {
+      qc.setQueriesData<PagedResponse<AdminUser>>({ queryKey: ['admin', 'users'] }, (old) =>
+        old && Array.isArray(old.data)
+          ? { ...old, data: old.data.map((u) => (u.id === row.id ? { ...u, ...row } : u)) }
+          : old,
+      );
+      qc.invalidateQueries({ queryKey: ['admin', 'users', 'detail', row.id] });
+      toast.success('Mobile number released');
+    },
+    onError: (error: unknown) =>
+      toast.error('Could not release the mobile number', {
+        description: getApiErrorMessage(error, 'Please try again.'),
+      }),
   });
 }
 

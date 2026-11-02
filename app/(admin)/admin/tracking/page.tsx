@@ -6,6 +6,7 @@ import { Search, MapPin, Navigation, Car, User, Clock, AlertTriangle, ExternalLi
 import { useAdminTrackingLookup } from '../../../../hooks/useAdmin';
 import { AdminPageHeader } from '../../../../components/admin';
 import { Button, Card, ErrorState } from '../../../../components/ui';
+import { statusLabel } from '../../../../components/common/StatusBadge';
 
 export default function AdminTrackingLookupPage() {
   const [searchInput, setSearchInput] = useState('');
@@ -84,7 +85,7 @@ export default function AdminTrackingLookupPage() {
                 <p className="text-xs opacity-80">
                   {result.isCurrentlyActive
                     ? `Driver is currently on trip. Last synced: ${result.lastSeenText}`
-                    : `Trip status: ${result.booking.status}. Last reported: ${result.lastSeenText}`}
+                    : `Trip status: ${statusLabel(result.booking.status)}.Last reported: ${result.lastSeenText}`}
                 </p>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { BusinessRole, DriverVerificationStatus } from '../../types/enums';
 import {
   MembershipStatus,
+  type BusinessTeamActiveUser,
   type BusinessTeamDriverProfile,
   type BusinessTeamMember,
 } from '../../types/team.types';
@@ -43,12 +44,30 @@ export function groupTeam<T extends Pick<BusinessTeamMember, 'status' | 'role'>>
   return sections;
 }
 
-/** The member's name: their invite name, else their driver profile's, else their email. */
+/**
+ * The member's account details — only for an ACTIVE member. The backend
+ * returns nothing about any account for an invite (pending, expired, declined
+ * or cancelled) and only `{ id, name }` for a past member.
+ */
+export function activeMemberUser(member: Pick<BusinessTeamMember, 'status' | 'user'>): BusinessTeamActiveUser | null {
+  const user = member.user;
+  if (member.status !== MembershipStatus.ACTIVE || !user || !('email' in user)) return null;
+  return user;
+}
+
+/** A pending invite whose 7 days are up (the backend's `expired`). */
+export function isExpiredInvite(member: Pick<BusinessTeamMember, 'status' | 'expired'>): boolean {
+  return member.status === MembershipStatus.INVITED && member.expired === true;
+}
+
+/** The member's name: their invite name, else their driver profile's or account's, else an email. */
 export function memberName(member: BusinessTeamMember): string {
+  const active = activeMemberUser(member);
   return (
     member.inviteName?.trim() ||
-    member.user?.driverProfile?.fullName?.trim() ||
-    member.user?.email ||
+    active?.driverProfile?.fullName?.trim() ||
+    member.user?.name?.trim() ||
+    active?.email ||
     member.inviteEmail ||
     'Team member'
   );

@@ -18,6 +18,9 @@ const STATUS_META: Record<BookingStatus, { label: string; color: string }> = {
   REJECTED: { label: 'Not accepted', color: 'bg-red-100 text-red-700' },
   CANCELLED: { label: 'Cancelled', color: 'bg-slate-100 text-slate-500' },
   COMPLETED: { label: 'Completed', color: 'bg-purple-100 text-purple-700' },
+  // Set by KerayeGo when an accepted rental's booked period ended without the
+  // job being started. Neutral; not a ride, not rateable.
+  NOT_STARTED: { label: 'Not started', color: 'bg-slate-100 text-slate-500' },
 };
 
 export default function UserInquiriesPage() {
@@ -232,6 +235,13 @@ function UserInquiryCard({ inquiry, onCancel }: { inquiry: BookingRequest; onCan
             <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
               <span className="font-semibold">Provider note:</span> {inquiry.providerNotes}
             </div>
+          )}
+
+          {inquiry.status === 'NOT_STARTED' && (
+            <p className="mt-2 text-xs text-slate-500">
+              The booked period ended before this rental was started, so it was closed. You can send a new
+              inquiry for this car any time.
+            </p>
           )}
 
           {/* Status history timeline (collapsed, last 2 entries) */}

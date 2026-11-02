@@ -29,6 +29,7 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   REJECTED: 'Rejected',
   CANCELLED: 'Cancelled',
   COMPLETED: 'Completed',
+  NOT_STARTED: 'Not started',
 };
 
 /** The driver's answer as the business sees it; `badge` is the StatusBadge key that gives its colour. */
@@ -64,6 +65,8 @@ const BUSINESS_BOOKING_ACTIONS: Record<BookingStatus, BusinessBookingAction[]> =
   REJECTED: [],
   CANCELLED: [],
   COMPLETED: [],
+  // Set only by the backend; nobody can leave it.
+  NOT_STARTED: [],
 };
 
 /** The buttons a business gets on a request in this status (empty: nothing to do). */
@@ -86,6 +89,7 @@ export const BOOKING_FILTERS: readonly BookingFilter[] = [
   'ACCEPTED',
   'IN_PROGRESS',
   'COMPLETED',
+  'NOT_STARTED',
   'REJECTED',
   'CANCELLED',
 ];
@@ -257,9 +261,11 @@ export function statusHistoryItems(booking: Pick<BookingRequest, 'statusHistory'
 export function finishedStatusNote(status: BookingStatus): string | null {
   switch (status) {
     case 'ACCEPTED':
-      return 'You accepted this request. Only KerayeGo can change its status now; you can still change the driver until the job starts. It is marked completed when the rental period ends.';
+      return 'You accepted this request. Only KerayeGo can change its status now; you can still change the driver until the job starts. If the job isn’t started before the booked period ends, KerayeGo closes it as Not started.';
     case 'COMPLETED':
       return 'This rental is completed.';
+    case 'NOT_STARTED':
+      return 'The booked period ended before the job was started, so KerayeGo closed this booking as Not started. It doesn’t count as a ride.';
     case 'REJECTED':
       return 'This request was declined.';
     case 'CANCELLED':
@@ -286,6 +292,9 @@ export function jobStateText(booking: Pick<BookingRequest, 'status' | 'startedAt
       booking.completedAt ? `ended ${formatDateTime(booking.completedAt)}` : null,
     ].filter(Boolean);
     return parts.length ? `Job ended — ${parts.join(', ')}.` : 'Job ended.';
+  }
+  if (booking.status === 'NOT_STARTED') {
+    return 'Never started — the booked period ended before the driver started the job.';
   }
   if (booking.status === 'ACCEPTED') {
     return 'Not started yet. The driver starts and ends the job in the KerayeGo Partner app.';

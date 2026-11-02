@@ -150,6 +150,11 @@ export default function DriverJobsPage() {
                       Completed{job.completedAt ? ` ${formatDateTime(job.completedAt)}` : ''}.
                     </p>
                   ) : null}
+                  {state.isNotStarted ? (
+                    <p className="mt-4 text-sm font-medium text-status-slate-fg">
+                      Not started — the booked period ended before the job was started, so KerayeGo closed it.
+                    </p>
+                  ) : null}
                   {state.awaitingStart ? (
                     <p className="mt-4 flex gap-2 text-[13px] text-text-muted">
                       <Smartphone className="mt-0.5 h-4 w-4 flex-shrink-0" />

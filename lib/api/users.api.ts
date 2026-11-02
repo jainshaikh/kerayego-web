@@ -1,5 +1,10 @@
 import apiClient from './client';
-import type { ApiResponse, User, PaginationMeta } from '../../types/api.types';
+import type {
+  ApiResponse,
+  User,
+  PaginationMeta,
+  PhoneSendCodeResponse,
+} from '../../types/api.types';
 import type { ListingVehicleCard } from './listings.api';
 
 export interface SavedVehicle {
@@ -19,9 +24,28 @@ export const usersApi = {
     return response.data;
   },
 
-  updateMe: async (data: { name?: string; phone?: string }) => {
+  // The number is no longer changed here (that would clear its verification):
+  // it goes through sendPhoneCode → verifyPhoneCode below.
+  updateMe: async (data: { name?: string; whatsappUpdates?: boolean }) => {
     const response = await apiClient.patch<ApiResponse<User>>('/users/me', data);
     return response.data;
+  },
+
+  // WhatsApp code to verify (or change to) a mobile number. Any format the
+  // backend's toE164Phone accepts (0300…, 300…, 92…, +92…). Errors carry
+  // PhoneErrorCode codes — none of them is a 401, so none triggers a refresh.
+  sendPhoneCode: async (phone: string) => {
+    const response = await apiClient.post<ApiResponse<PhoneSendCodeResponse>>(
+      '/users/me/phone/send-code',
+      { phone },
+    );
+    return response.data.data;
+  },
+
+  /** 200 → the updated user (phoneVerified: true); 400 CODE_INVALID for a wrong/expired code. */
+  verifyPhoneCode: async (code: string) => {
+    const response = await apiClient.post<ApiResponse<User>>('/users/me/phone/verify', { code });
+    return response.data.data;
   },
 
   getSavedVehicles: async (page = 1, limit = 20) => {

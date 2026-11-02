@@ -21,6 +21,8 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   cancelled: 'slate',
   expired: 'slate',
   completed: 'teal',
+  // An accepted rental whose booked period ended unstarted — neutral, not an error.
+  not_started: 'slate',
   unverified: 'slate',
   verified: 'emerald',
   cleared: 'emerald',
@@ -53,6 +55,7 @@ const LABEL_MAP: Record<string, string> = {
   CANCELLED: 'Cancelled',
   EXPIRED: 'Expired',
   COMPLETED: 'Completed',
+  NOT_STARTED: 'Not started',
   // DriverVerificationStatus (PENDING_REVIEW/REJECTED reuse the labels above)
   UNVERIFIED: 'Not submitted',
   VERIFIED: 'Verified',
@@ -60,6 +63,11 @@ const LABEL_MAP: Record<string, string> = {
   CLEARED: 'Cleared',
   BLOCKED: 'Blocked',
 };
+
+/** The badge's display label for a wire status ("NOT_STARTED" → "Not started"); the raw value when unknown. */
+export function statusLabel(status: string): string {
+  return LABEL_MAP[status] ?? status;
+}
 
 interface StatusBadgeProps {
   status: string;
@@ -74,7 +82,7 @@ export function StatusBadge({ status, size = 'md', className, label: labelOverri
   const key = status.toLowerCase();
   const tone = TONE_BY_STATUS[key];
   const styles = tone ? TONE_STYLES[tone] : 'bg-page text-slate-600 border-border-subtle';
-  const label = labelOverride ?? LABEL_MAP[status] ?? status;
+  const label = labelOverride ?? statusLabel(status);
 
   return (
     <span

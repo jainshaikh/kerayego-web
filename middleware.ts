@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 const PROTECTED_ROUTES = ['/dashboard', '/provider/', '/driver/', '/admin'];
 
 // Routes only accessible to unauthenticated users — redirect logged-in users away
-const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
+const AUTH_ROUTES = ['/login', '/register'];
 
 // Role-to-route mapping — wrong role gets redirected to their correct dashboard.
 // /provider/ (business portal) and /driver/ (driver portal) are open to both
@@ -77,8 +77,9 @@ export function middleware(request: NextRequest) {
 
   const isAuthenticated = !!userRoleCookie;
   const userRole = userRoleCookie?.value || null;
-  // Set alongside userRole at login (see hooks/useAuth.ts) — 'false' until the
-  // user clicks the link in their verification email.
+  // Set alongside userRole at sign-in (see hooks/useAuth.ts). Signing in with an
+  // emailed code proves the email, so this is 'false' only for an older session
+  // whose owner hasn't clicked their verification link yet.
   const isEmailVerified = emailVerifiedCookie?.value === 'true';
 
   // ── Redirect authenticated users away from auth pages ─────────────────────

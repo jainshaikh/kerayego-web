@@ -9,6 +9,7 @@ import type {
   ActivityLogCategory,
   ActivityLogEntry,
 } from '../../lib/api/admin.api';
+import { SYSTEM_ACTOR_NAME } from '../../lib/activity/activityDisplay';
 import { cn } from '../../lib/utils/cn';
 import { Button, Card, PillToggle } from '../ui';
 
@@ -54,7 +55,7 @@ function CategoryTag({ category }: { category: ActivityLogCategory }) {
 }
 
 function Actor({ actor }: { actor: ActivityLogEntry['actor'] }) {
-  if (!actor) return <span className="italic text-text-muted">System</span>;
+  if (!actor) return <span className="italic text-text-muted">{SYSTEM_ACTOR_NAME}</span>;
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       <span className="font-medium text-ink">{actor.name}</span>
@@ -252,7 +253,7 @@ export function BusinessActivityCard({ providerId, recentActivity, recentLoading
             </button>
             <h2 className="mb-1 pr-8 text-lg font-semibold text-slate-900">Delete activity entry</h2>
             <p className="mb-3 text-sm text-slate-500">
-              <strong className="text-slate-700">{deleting.actor?.name ?? 'System'}</strong> {deleting.summary}
+              <strong className="text-slate-700">{deleting.actor?.name ?? SYSTEM_ACTOR_NAME}</strong> {deleting.summary}
               <span className="block text-xs text-slate-400">{formatWhen(deleting.createdAt)}</span>
             </p>
             <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">

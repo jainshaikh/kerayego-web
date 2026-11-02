@@ -7,7 +7,7 @@ import { Avatar, Button, Card, EmptyState, ErrorState, Modal, SegmentedTabs } fr
 import { TeamMemberCard } from '../../../../components/business/team/TeamMemberCard';
 import { InviteMemberModal } from '../../../../components/business/team/InviteMemberModal';
 import { useWorkspace } from '../../../../hooks/useWorkspace';
-import { useMyTeam, useRemoveTeamMember } from '../../../../hooks/useTeam';
+import { useMyTeam, useReinviteTeamMember, useRemoveTeamMember } from '../../../../hooks/useTeam';
 import { getApiErrorMessage } from '../../../../hooks/useAccountDeletion';
 import { useAuthStore } from '../../../../store/auth.store';
 import { manageableTeamRoles } from '../../../../lib/workspace/workspaceSelection';
@@ -65,6 +65,7 @@ export default function ProviderTeamPage() {
   const manageable = manageableTeamRoles(active) as (BusinessRole.MANAGER | BusinessRole.DRIVER)[];
   const teamQuery = useMyTeam();
   const removeMember = useRemoveTeamMember();
+  const reinviteMember = useReinviteTeamMember();
 
   const [filter, setFilter] = useState<Filter>('ALL');
   const [pastOpen, setPastOpen] = useState(false);
@@ -105,6 +106,13 @@ export default function ProviderTeamPage() {
     });
   };
 
+  const reinvite = (member: BusinessTeamMember) => {
+    reinviteMember.mutate(member.id, {
+      onSuccess: () => toast.success(`Invite sent again to ${memberName(member)}`),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Could not send the invite again')),
+    });
+  };
+
   const renderList = (members: BusinessTeamMember[]) => (
     <div className="space-y-3">
       {members.map((member) => (
@@ -114,6 +122,8 @@ export default function ProviderTeamPage() {
           today={today}
           canManage={manageable.includes(member.role as BusinessRole.MANAGER | BusinessRole.DRIVER)}
           onRemove={() => setRemoving(member)}
+          onReinvite={() => reinvite(member)}
+          reinviting={reinviteMember.isPending && reinviteMember.variables === member.id}
         />
       ))}
     </div>
@@ -219,7 +229,7 @@ export default function ProviderTeamPage() {
               {section(
                 'Pending invites',
                 sections.invites,
-                "Waiting for them to accept. Invites go to the email address you entered.",
+                'Waiting for them to accept. Invites go to the email address you entered and run out after 7 days — send an expired one again.',
               )}
             </>
           )}
@@ -241,7 +251,8 @@ export default function ProviderTeamPage() {
               {pastOpen ? (
                 <>
                   <p className="text-xs text-text-muted">
-                    Removed, left, or declined the invite. They no longer have access to this business.
+                    Removed, left, declined the invite, or the invite was cancelled. They no longer have access to
+                    this business.
                   </p>
                   {renderList(sections.past)}
                 </>

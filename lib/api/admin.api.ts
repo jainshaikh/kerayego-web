@@ -257,6 +257,8 @@ export interface AdminProviderBusinessSummary {
     completed: number;
     cancelled: number;
     rejected: number;
+    /** Accepted, but the booked period ended before the job was started (NOT_STARTED). */
+    notStarted: number;
   };
   /** The business's own latest 15 activity-log entries (not KerayeGo admin actions). */
   recentActivity: ActivityLogEntry[];
@@ -466,6 +468,10 @@ export const adminApi = {
     apiClient
       .patch<ApiResponse<{ id: string; name: string; email: string; status: string }>>(`/admin/users/${id}/activate`)
       .then((r) => r.data.data),
+
+  // Frees the account's mobile number so another account can use it (A23).
+  releaseUserPhone: (id: string, reason: string) =>
+    apiClient.post<ApiResponse<AdminUser>>(`/admin/users/${id}/release-phone`, { reason }).then((r) => r.data.data),
 
   // Person blocks (A22, D18). Lift is SUPER_ADMIN only and never reactivates the account.
   blockUser: (id: string, reason: string) =>

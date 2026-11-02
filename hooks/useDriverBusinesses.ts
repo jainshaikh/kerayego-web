@@ -17,7 +17,13 @@ export function useMyDriverBusinesses() {
   });
 }
 
-/** POST /driver/businesses/:memberId/accept — a driver or manager invitation. */
+/**
+ * POST /driver/businesses/:memberId/accept — a driver or manager invitation.
+ * Refusals (the page shows the server's message): 403 EMAIL_NOT_VERIFIED;
+ * 404 not found; 409 expired, no longer pending, already a member (and, for a
+ * manager, owns or manages a business). A refusal refetches the list, since
+ * the invite may have expired or changed meanwhile.
+ */
 export function useAcceptBusinessInvite() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -25,6 +31,9 @@ export function useAcceptBusinessInvite() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: driverKeys.businesses() });
       void invalidateWorkspaces(queryClient);
+    },
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: driverKeys.businesses() });
     },
   });
 }

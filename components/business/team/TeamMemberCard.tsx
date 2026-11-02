@@ -9,8 +9,10 @@ import {
   BUSINESS_ROLE_LABELS,
   DRIVER_VERIFICATION_LABELS,
   MEMBERSHIP_STATUS_LABELS,
+  activeMemberUser,
   driverReadiness,
   formatShortDate,
+  isExpiredInvite,
   isPastMember,
   memberName,
 } from '../../../lib/team/teamGroups';
@@ -19,28 +21,38 @@ interface TeamMemberCardProps {
   member: BusinessTeamMember;
   /** Today's date, "YYYY-MM-DD" — for the licence check. */
   today: string;
-  /** Whether this dashboard may remove the member / cancel the invite (manageableTeamRoles). */
+  /** Whether this dashboard may remove the member / cancel or re-send the invite (manageableTeamRoles). */
   canManage: boolean;
   onRemove: () => void;
+  /** "Send again" on an expired invite (POST /providers/me/team/:memberId/reinvite). */
+  onReinvite?: () => void;
+  /** This row's re-send is in flight. */
+  reinviting?: boolean;
 }
 
 // One team member, as the Partner app's Team screen shows it: name, role and
 // invite email, the membership badge and (a current driver) the verification
 // badge, licence details and whether they can be given jobs — plus the dates
-// they were invited and joined (or left).
-export function TeamMemberCard({ member, today, canManage, onRemove }: TeamMemberCardProps) {
+// they were invited and joined (or left). The backend returns account details
+// (contact, driver profile) only for ACTIVE members; an invite shows only what
+// the business typed, and a past member only a name.
+export function TeamMemberCard({ member, today, canManage, onRemove, onReinvite, reinviting = false }: TeamMemberCardProps) {
   const past = isPastMember(member);
   const isInvited = member.status === MembershipStatus.INVITED;
+  const isActive = member.status === MembershipStatus.ACTIVE;
+  const expired = isExpiredInvite(member);
   const isDriver = member.role === BusinessRole.DRIVER;
-  const driver = member.user?.driverProfile ?? null;
+  const account = activeMemberUser(member);
+  const driver = account?.driverProfile ?? null;
   const name = memberName(member);
-  const email = member.inviteEmail ?? member.user?.email ?? null;
-  const phone = member.invitePhone ?? member.user?.phone ?? null;
+  const email = member.inviteEmail ?? account?.email ?? null;
+  const phone = member.invitePhone ?? account?.phone ?? null;
   const verification = driver?.verificationStatus ?? DriverVerificationStatus.UNVERIFIED;
-  const readiness = isDriver && !past && !isInvited ? driverReadiness(driver, today) : null;
+  // Readiness reads the driver profile, which only ACTIVE members carry.
+  const readiness = isDriver && isActive ? driverReadiness(driver, today) : null;
 
   return (
-    <Card padding="sm" className={past ? 'opacity-80' : undefined}>
+    <Card padding="sm" className={past || expired ? 'opacity-80' : undefined}>
       <div className="flex flex-wrap items-start gap-3">
         <Avatar name={name} size="md" />
         <div className="min-w-0 flex-1">
@@ -62,18 +74,22 @@ export function TeamMemberCard({ member, today, canManage, onRemove }: TeamMembe
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <StatusBadge
-            status={member.status === MembershipStatus.DECLINED ? 'REJECTED' : member.status}
-            label={MEMBERSHIP_STATUS_LABELS[member.status]}
-            size="sm"
-          />
-          {isDriver && !past ? (
+          {expired ? (
+            <StatusBadge status="EXPIRED" label="Expired" size="sm" />
+          ) : (
+            <StatusBadge
+              status={member.status === MembershipStatus.DECLINED ? 'REJECTED' : member.status}
+              label={MEMBERSHIP_STATUS_LABELS[member.status]}
+              size="sm"
+            />
+          )}
+          {isDriver && isActive ? (
             <StatusBadge status={verification} label={DRIVER_VERIFICATION_LABELS[verification]} size="sm" />
           ) : null}
         </div>
       </div>
 
-      {driver && !past ? (
+      {driver && isActive ? (
         <div className="mt-3 space-y-0.5 text-xs text-text-muted">
           <p>
             Experience: {driver.experienceYears ?? 0} years · Category: {driver.licenseCategory || 'N/A'}
@@ -99,17 +115,32 @@ export function TeamMemberCard({ member, today, canManage, onRemove }: TeamMembe
         )
       ) : null}
 
+      {expired ? (
+        <p className="mt-2 text-xs text-text-muted">
+          This invite ran out{member.expiresAt ? ` on ${formatShortDate(member.expiresAt)}` : ''} and can no longer be
+          accepted. Send it again to give them another 7 days.
+        </p>
+      ) : null}
+
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-2.5">
         <p className="text-xs text-text-faint">
           Invited {formatShortDate(member.invitedAt)}
+          {isInvited && !expired && member.expiresAt ? ` · Expires ${formatShortDate(member.expiresAt)}` : ''}
           {member.joinedAt ? ` · Joined ${formatShortDate(member.joinedAt)}` : ''}
           {member.status === MembershipStatus.INACTIVE ? ' · No longer a member' : ''}
           {member.status === MembershipStatus.DECLINED ? ' · Declined the invite' : ''}
         </p>
         {!past && canManage ? (
-          <Button size="sm" variant="ghost" className="text-red-700" onClick={onRemove}>
-            {isInvited ? 'Cancel invite' : 'Remove'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-1">
+            {expired && onReinvite ? (
+              <Button size="sm" variant="secondary" loading={reinviting} onClick={onReinvite}>
+                Send again
+              </Button>
+            ) : null}
+            <Button size="sm" variant="ghost" className="text-red-700" disabled={reinviting} onClick={onRemove}>
+              {isInvited ? 'Cancel invite' : 'Remove'}
+            </Button>
+          </div>
         ) : null}
       </div>
     </Card>

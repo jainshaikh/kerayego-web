@@ -9,7 +9,9 @@ export type BookingStatus =
   | 'IN_PROGRESS'
   | 'REJECTED'
   | 'CANCELLED'
-  | 'COMPLETED';
+  | 'COMPLETED'
+  /** Terminal, set by the backend: accepted, but the booked period ended before the job was started. */
+  | 'NOT_STARTED';
 
 export interface BookingVehicle {
   id: string;
@@ -55,6 +57,10 @@ export interface BookingRequest {
   assignedDriver?: {
     id: string;
     name: string;
+    /**
+     * For the customer: null unless the booking is IN_PROGRESS, or ACCEPTED
+     * with the driver's job accepted (D14). Never offer Call/WhatsApp without it.
+     */
     phone?: string | null;
     avatarUrl?: string | null;
     driverProfile?: {
@@ -129,6 +135,7 @@ export const bookingsApi = {
           id: string;
           name: string;
           avatarUrl: string | null;
+          /** Null unless IN_PROGRESS, or ACCEPTED with the driver's job accepted (D14). */
           phone: string | null;
           driverProfile?: any;
         };

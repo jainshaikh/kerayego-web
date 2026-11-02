@@ -3,6 +3,7 @@ import { Outfit, IBM_Plex_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { QueryProvider } from '../lib/providers/query-provider';
 import { AuthBootstrap } from '../lib/providers/auth-bootstrap';
+import { PhoneGateListener } from '../components/account/PhoneGateListener';
 import { GoogleAnalytics } from '../components/analytics/GoogleAnalytics';
 import './globals.css';
 
@@ -115,6 +116,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <GoogleAnalytics />
         <QueryProvider>
           <AuthBootstrap />
+          <PhoneGateListener />
           {children}
           <Toaster position="top-right" richColors closeButton />
         </QueryProvider>

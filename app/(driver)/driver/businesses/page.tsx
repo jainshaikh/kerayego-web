@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Building2, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Building2, Loader2, MailWarning } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, ConfirmDialog, EmptyState, ErrorState } from '../../../../components/ui';
 import { BusinessMembershipCard } from '../../../../components/driver/DriverBusinessCards';
@@ -12,7 +13,8 @@ import {
 } from '../../../../hooks/useDriverBusinesses';
 import { getApiErrorMessage } from '../../../../hooks/useAccountDeletion';
 import { formatDate } from '../../../../lib/driver/fields';
-import { groupDriverBusinesses, pendingManagerInvites } from '../../../../lib/driver/jobs';
+import { groupDriverBusinesses, isExpiredInvitation, pendingManagerInvites } from '../../../../lib/driver/jobs';
+import { useAuthStore } from '../../../../store/auth.store';
 import { BusinessRole } from '../../../../types/enums';
 import type { DriverLinkedBusiness } from '../../../../types/driver.types';
 
@@ -24,11 +26,15 @@ type Confirming = { kind: 'decline' | 'leave'; member: DriverLinkedBusiness };
 // Decline), and the businesses this driver works for now (Leave, after a
 // confirmation). GET /driver/businesses; accept is POST
 // /driver/businesses/:memberId/accept, decline and leave are /leave. Accepting
-// or leaving refetches the workspaces (a dashboard may appear or go). A
-// manager invitation the backend refuses (409: already owns or manages a
-// business) shows its message as-is.
+// or leaving refetches the workspaces (a dashboard may appear or go). Every
+// refusal shows the server's message as-is: 403 EMAIL_NOT_VERIFIED, 409
+// expired / no longer pending / already a member, and for a manager invitation
+// 409 already owns or manages a business. Invites expire after 7 days — an
+// expired one shows as Expired, without Accept. Invitations are addressed to
+// the email, so the backend lists them only once that email is confirmed.
 export default function DriverBusinessesPage() {
   const businessesQuery = useMyDriverBusinesses();
+  const emailUnverified = useAuthStore((s) => s.user?.emailVerified === false);
   const acceptInvite = useAcceptBusinessInvite();
   const leaveBusiness = useLeaveBusiness();
   const [confirming, setConfirming] = useState<Confirming | null>(null);
@@ -76,6 +82,18 @@ export default function DriverBusinessesPage() {
         <p className="mt-1 text-sm text-text-muted">The rental businesses you drive for, and their invitations.</p>
       </div>
 
+      {emailUnverified ? (
+        <div className="mb-6 flex gap-3 rounded-card border border-status-amber-border bg-status-amber-bg p-4 text-sm text-status-amber-fg">
+          <MailWarning className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <p>
+            Confirm your email to see invitations sent to it.{' '}
+            <Link href="/verify-email" className="font-semibold underline">
+              Confirm email
+            </Link>
+          </p>
+        </div>
+      ) : null}
+
       {businessesQuery.isPending ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-text-faint" />
@@ -102,6 +120,7 @@ export default function DriverBusinessesPage() {
                     >
                       <InviteButtons
                         busy={busy}
+                        expired={isExpiredInvitation(member)}
                         accepting={acceptInvite.isPending && acceptInvite.variables === member.id}
                         onAccept={() => accept(member)}
                         onDecline={() => setConfirming({ kind: 'decline', member })}
@@ -130,6 +149,7 @@ export default function DriverBusinessesPage() {
                     <BusinessMembershipCard member={member} detail={`Invited ${formatDate(member.invitedAt)}`}>
                       <InviteButtons
                         busy={busy}
+                        expired={isExpiredInvitation(member)}
                         accepting={acceptInvite.isPending && acceptInvite.variables === member.id}
                         onAccept={() => accept(member)}
                         onDecline={() => setConfirming({ kind: 'decline', member })}
@@ -190,20 +210,29 @@ export default function DriverBusinessesPage() {
 
 function InviteButtons({
   busy,
+  expired,
   accepting,
   onAccept,
   onDecline,
 }: {
   busy: boolean;
+  /** An expired invite can't be accepted (409) — no Accept, just say so. */
+  expired: boolean;
   accepting: boolean;
   onAccept: () => void;
   onDecline: () => void;
 }) {
   return (
     <>
-      <Button size="sm" loading={accepting} disabled={busy} onClick={onAccept}>
-        Accept
-      </Button>
+      {expired ? (
+        <p className="mr-auto self-center text-[13px] text-text-muted">
+          This invite has expired — ask the business to invite you again.
+        </p>
+      ) : (
+        <Button size="sm" loading={accepting} disabled={busy} onClick={onAccept}>
+          Accept
+        </Button>
+      )}
       <Button size="sm" variant="secondary" disabled={busy} onClick={onDecline}>
         Decline
       </Button>

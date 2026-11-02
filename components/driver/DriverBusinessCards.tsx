@@ -5,7 +5,7 @@ import { Building2 } from 'lucide-react';
 import { Card } from '../ui';
 import { StatusBadge } from '../common/StatusBadge';
 import type { DriverLinkedBusiness } from '../../types/driver.types';
-import { MEMBERSHIP_STATUS_LABELS } from '../../lib/driver/jobs';
+import { MEMBERSHIP_STATUS_LABELS, isExpiredInvitation } from '../../lib/driver/jobs';
 
 /** A business's logo, or its initial. */
 export function BusinessLogo({ name, logoUrl }: { name: string; logoUrl: string | null }) {
@@ -45,7 +45,9 @@ export function BusinessMembershipCard({
           <p className="truncate text-sm font-semibold text-ink">{member.providerProfile.businessName}</p>
           {detail ? <p className="mt-0.5 text-[13px] text-text-muted">{detail}</p> : null}
         </div>
-        {showStatus ? (
+        {isExpiredInvitation(member) ? (
+          <StatusBadge status="EXPIRED" label="Expired" size="sm" />
+        ) : showStatus ? (
           <StatusBadge status={member.status} label={MEMBERSHIP_STATUS_LABELS[member.status] ?? member.status} size="sm" />
         ) : null}
       </div>

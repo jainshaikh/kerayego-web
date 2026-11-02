@@ -82,16 +82,26 @@ export default function InquirePage() {
   }
 
   const onSubmit = async (values: CreateBookingFormValues) => {
-    const result = await createBooking.mutateAsync({
-      vehicleId: values.vehicleId,
-      requestedFromDate: values.requestedFromDate,
-      durationType: values.durationType,
-      durationQuantity: values.durationQuantity,
-      pickupLocation: values.pickupLocation || undefined,
-      message: values.message || undefined,
-    });
-    if (result) setSubmitted(true);
+    try {
+      const result = await createBooking.mutateAsync({
+        vehicleId: values.vehicleId,
+        requestedFromDate: values.requestedFromDate,
+        durationType: values.durationType,
+        durationQuantity: values.durationQuantity,
+        pickupLocation: values.pickupLocation || undefined,
+        message: values.message || undefined,
+      });
+      if (result) setSubmitted(true);
+    } catch {
+      // Shown below from createBooking.error (and toasted by the hook).
+    }
   };
+
+  // 409: this customer already has an active request (pending, contacted,
+  // accepted or in progress) for this car. Booking it again is fine once that
+  // one is completed, cancelled, declined or not started.
+  const hasActiveRequest =
+    (createBooking.error as { response?: { status?: number } } | null)?.response?.status === 409;
 
   if (submitted) {
     return (
@@ -259,7 +269,17 @@ export default function InquirePage() {
 
             {createBooking.isError && (
               <div className="rounded-control border border-status-red-border bg-status-red-bg px-4 py-3 text-sm text-status-red-fg">
-                {getApiErrorMessage(createBooking.error, 'Something went wrong. Please try again.')}
+                {getApiErrorMessage(
+                  createBooking.error,
+                  hasActiveRequest
+                    ? 'You already have an active inquiry for this vehicle'
+                    : 'Something went wrong. Please try again.',
+                )}
+                {hasActiveRequest && (
+                  <Link href="/dashboard/inquiries" className="ml-1 font-semibold underline">
+                    View my inquiries
+                  </Link>
+                )}
               </div>
             )}
 

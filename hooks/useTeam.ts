@@ -24,11 +24,27 @@ export function useInviteTeamMember() {
   return useMutation({
     mutationFn: (payload: InviteTeamMemberPayload) => teamApi.inviteMember(payload),
     onSuccess: (newMember) => {
+      // Inviting an email whose invite expired re-sends that same row — replace it.
       queryClient.setQueryData<BusinessTeamMember[]>(teamQueryKeys.list(), (prev = []) => [
         newMember,
-        ...prev,
+        ...prev.filter((m) => m.id !== newMember.id),
       ]);
     },
+  });
+}
+
+/** Re-send a pending (usually expired) invite with a fresh 7 days. */
+export function useReinviteTeamMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (memberId: string) => teamApi.reinviteMember(memberId),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<BusinessTeamMember[]>(teamQueryKeys.list(), (prev) =>
+        prev?.map((m) => (m.id === updated.id ? updated : m)),
+      );
+    },
+    // A 409 means the row changed meanwhile (accepted, declined, cancelled) — show its real state.
+    onError: () => queryClient.invalidateQueries({ queryKey: teamQueryKeys.all }),
   });
 }
 

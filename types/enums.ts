@@ -48,6 +48,9 @@ export enum BookingRequestStatus {
   REJECTED = 'REJECTED',
   CANCELLED = 'CANCELLED',
   COMPLETED = 'COMPLETED',
+  // Terminal, set only by the backend's cron: an ACCEPTED rental whose booked
+  // period ended without the job being started (A70). Never a ride, never rateable.
+  NOT_STARTED = 'NOT_STARTED',
 }
 
 export enum DocumentStatus {

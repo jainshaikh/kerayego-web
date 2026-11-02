@@ -43,6 +43,14 @@ export interface User {
   /** True while KerayeGo checks the account after its phone matched a blocked person:
    * browsing works, but booking, posting trips, requesting seats and driving are paused. */
   identityHold?: boolean;
+  /** True when `phone` is set and was verified with a WhatsApp code. */
+  phoneVerified: boolean;
+  /** True when the backend's verification gate is on, the account isn't ADMIN and its phone
+   * isn't verified: show the blocking "Verify your mobile number" screen. Never derive this
+   * client-side — follow this flag. */
+  mustVerifyPhone: boolean;
+  /** Booking and trip updates on WhatsApp (settings toggle; the verification code always goes). */
+  whatsappUpdates: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,11 +64,66 @@ export interface AuthUser {
   emailVerified: boolean;
   /** See User.identityHold. */
   identityHold?: boolean;
+  /** See User.phoneVerified / mustVerifyPhone / whatsappUpdates. Optional only because a
+   * session stored before these fields existed lacks them — the backend always sends them. */
+  phoneVerified?: boolean;
+  mustVerifyPhone?: boolean;
+  whatsappUpdates?: boolean;
 }
 
+// ─── Phone verification (WhatsApp code) ─────────────────────────────────────
+
+/** POST /users/me/phone/send-code. */
+export type PhoneSendCodeResponse =
+  | {
+      /** The number in E.164 (+923001234567) the code was sent to. */
+      phone: string;
+      expiresInMinutes: number;
+      resendInSeconds: number;
+      channel: 'whatsapp';
+      alreadyVerified?: undefined;
+    }
+  /** The number is already this account's verified phone — nothing was sent. */
+  | { phone: string; alreadyVerified: true };
+
+/** Error-envelope codes of the phone-verification endpoints and the gate. */
+export const PhoneErrorCode = {
+  /** 409 — another account holds this number and has verified it. */
+  PHONE_TAKEN: 'PHONE_TAKEN',
+  /** 429 — within 60 s of the last code; carries retryAfterSeconds. */
+  CODE_RESEND_TOO_SOON: 'CODE_RESEND_TOO_SOON',
+  /** 429 — 10 codes in 24 h for this account. */
+  CODE_LIMIT_REACHED: 'CODE_LIMIT_REACHED',
+  /** 502 — Meta rejected the message (its message is shown). */
+  WHATSAPP_SEND_FAILED: 'WHATSAPP_SEND_FAILED',
+  /** 503 — WhatsApp isn't configured on the server. */
+  WHATSAPP_UNAVAILABLE: 'WHATSAPP_UNAVAILABLE',
+  /** 400 (not 401, so no token refresh) — wrong or expired code. */
+  CODE_INVALID: 'CODE_INVALID',
+  /** 403 from any gated endpoint — the account must verify its phone first. */
+  PHONE_NOT_VERIFIED: 'PHONE_NOT_VERIFIED',
+} as const;
+export type PhoneErrorCode = (typeof PhoneErrorCode)[keyof typeof PhoneErrorCode];
+
+/** POST /auth/code/verify. */
 export interface LoginResponse {
   accessToken: string;
   user: AuthUser;
+  /** True when this sign-in cancelled a pending account deletion. */
+  deletionCancelled: boolean;
+}
+
+/** POST /auth/code/request — the same answer whether or not the email has an account. */
+export interface LoginCodeRequestResponse {
+  message: string;
+  resendAfterSeconds: number;
+}
+
+/** POST /auth/register without a password: a sign-in code was emailed (codeSent: true). */
+export interface RegisterResponse {
+  user: AuthUser & { phone: string | null; createdAt: string };
+  message: string;
+  codeSent: boolean;
 }
 
 // ─── Provider ───────────────────────────────────────────────────────────────

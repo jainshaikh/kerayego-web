@@ -1,23 +1,34 @@
 import apiClient from './client';
-import type { ApiResponse, AuthUser, LoginResponse } from '../../types/api.types';
 import type {
-  RegisterFormValues,
-  LoginFormValues,
-  ForgotPasswordFormValues,
-  ResetPasswordFormValues,
-} from '../validations/auth.schema';
+  ApiResponse,
+  LoginCodeRequestResponse,
+  LoginResponse,
+  RegisterResponse,
+} from '../../types/api.types';
+import type { RegisterFormValues } from '../validations/auth.schema';
 
 export const authApi = {
-  register: async (data: Omit<RegisterFormValues, 'confirmPassword'>) => {
-    const response = await apiClient.post<ApiResponse<{ user: AuthUser; message: string }>>(
-      '/auth/register',
-      data,
+  /** No password: the backend emails a 6-digit code (codeSent: true). */
+  register: async (data: RegisterFormValues) => {
+    const response = await apiClient.post<ApiResponse<RegisterResponse>>('/auth/register', data);
+    return response.data;
+  },
+
+  /** Always the same 200 answer, whether or not the email has an account. */
+  requestLoginCode: async (email: string) => {
+    const response = await apiClient.post<ApiResponse<LoginCodeRequestResponse>>(
+      '/auth/code/request',
+      { email },
     );
     return response.data;
   },
 
-  login: async (data: LoginFormValues) => {
-    const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login', data);
+  /** Same response as the old password login; the refresh token arrives as an httpOnly cookie. */
+  verifyLoginCode: async (email: string, code: string) => {
+    const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/code/verify', {
+      email,
+      code,
+    });
     return response.data;
   },
 
@@ -38,36 +49,9 @@ export const authApi = {
     return response.data;
   },
 
-  forgotPassword: async (data: ForgotPasswordFormValues) => {
-    const response = await apiClient.post<ApiResponse<{ message: string }>>(
-      '/auth/forgot-password',
-      data,
-    );
-    return response.data;
-  },
-
-  resetPassword: async (data: ResetPasswordFormValues) => {
-    const response = await apiClient.post<ApiResponse<{ message: string }>>(
-      '/auth/reset-password',
-      {
-        token: data.token,
-        newPassword: data.newPassword,
-      },
-    );
-    return response.data;
-  },
-
   resendVerification: async () => {
     const response = await apiClient.post<ApiResponse<{ message: string }>>(
       '/auth/resend-verification',
-    );
-    return response.data;
-  },
-
-  changePassword: async (data: { currentPassword: string; newPassword: string }) => {
-    const response = await apiClient.post<ApiResponse<{ message: string }>>(
-      '/auth/change-password',
-      data,
     );
     return response.data;
   },

@@ -40,8 +40,11 @@ export function emptyActivityCopy(
   };
 }
 
-/** Shown when the backend sends no actor (an entry the system wrote). */
-export const SYSTEM_ACTOR_NAME = 'KerayeGo';
+/**
+ * Shown when the backend sends `actor: null` — an entry KerayeGo wrote by
+ * itself, e.g. booking.notStarted and booking.autoCompleted from the booking cron.
+ */
+export const SYSTEM_ACTOR_NAME = 'KerayeGo (automatic)';
 
 export function actorName(actor: Pick<ActivityActor, 'name'> | null): string {
   return actor?.name?.trim() || SYSTEM_ACTOR_NAME;

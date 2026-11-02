@@ -8,9 +8,9 @@ import type { RentalDurationType } from '../lib/utils/rentalDuration';
 // KerayeGo Partner app's types/booking-requests.types.ts. If these and the
 // backend disagree, the backend is right.
 //
-// String unions on purpose: types/enums.ts's BookingRequestStatus has no
-// IN_PROGRESS yet (a foundation file, not this area's to change).
+// String unions on purpose (kept in step with types/enums.ts's BookingRequestStatus).
 
+/** NOT_STARTED: terminal, set only by the backend — an ACCEPTED rental whose booked period ended unstarted. */
 export type BookingStatus =
   | 'PENDING'
   | 'CONTACTED'
@@ -18,7 +18,8 @@ export type BookingStatus =
   | 'IN_PROGRESS'
   | 'REJECTED'
   | 'CANCELLED'
-  | 'COMPLETED';
+  | 'COMPLETED'
+  | 'NOT_STARTED';
 
 /** The assigned driver's answer to the job (BookingRequest.driverJobStatus). */
 export type DriverJobStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
