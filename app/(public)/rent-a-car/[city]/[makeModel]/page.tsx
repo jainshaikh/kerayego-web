@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight, MapPin } from 'lucide-react';
 import { fetchListings, fetchDistinctMakes } from '../../../../../lib/api/server';
@@ -71,22 +71,46 @@ function toDisplayName(value: string): string {
     .join(' ');
 }
 
+// Like toDisplayName, but keeps the hyphens that are part of a make or model
+// name: "mercedes-benz e-class" → "Mercedes-Benz E-Class".
+function toVehicleLabel(value: string): string {
+  return value
+    .split(/\s+/)
+    .map((word) => word.replace(/(^|-)(\S)/g, (_, sep: string, ch: string) => sep + ch.toUpperCase()))
+    .join(' ');
+}
+
+// Hyphens and spaces both become one space, so "mercedes-benz e-class" and
+// the URL slug "mercedes-benz-e-class" compare equal.
+function normalizeName(value: string): string {
+  return value.toLowerCase().replace(/[\s-]+/g, ' ').trim();
+}
+
 // The URL segment is "toyota" (make only) or "toyota-corolla" (make+model).
 // Makes are usually one word and models can be multi-word ("land cruiser
 // prado"), so a plain split can't tell them apart on its own — instead we
-// check the known makes list (already fetched elsewhere in the app) for the
-// longest one that's a prefix of the slug, and treat everything after it as
-// the model. Falls back to treating the whole slug as the make if no known
-// make matches, which keeps old make-only links working unchanged.
-async function splitMakeModel(slug: string): Promise<{ make: string; model?: string }> {
-  const candidate = decodeURIComponent(slug).toLowerCase().replace(/-/g, ' ').trim();
+// check the known makes list for the longest one that's a prefix of the slug,
+// and treat everything after it as the model. Falls back to treating the whole
+// slug as the make if no known make matches, which keeps old make-only links
+// working unchanged.
+//
+// The slug turns spaces into hyphens, so it can't say whether a hyphen was a
+// space or part of the name ("mercedes-benz", "d-max", "br-v"). The backend
+// matches with `contains`, so it needs the real spelling: the make comes from
+// the makes list, and the model from the city's listings for that make.
+async function splitMakeModel(city: string, slug: string): Promise<{ make: string; model?: string }> {
+  const candidate = normalizeName(decodeURIComponent(slug));
   const makesRes = await fetchDistinctMakes();
   const makes = (makesRes?.data ?? []).map((m) => m.toLowerCase()).sort((a, b) => b.length - a.length);
 
   for (const make of makes) {
-    if (candidate === make || candidate.startsWith(`${make} `)) {
-      const model = candidate.slice(make.length).trim();
-      return { make, model: model || undefined };
+    const normalizedMake = normalizeName(make);
+    if (candidate === normalizedMake || candidate.startsWith(`${normalizedMake} `)) {
+      const rest = candidate.slice(normalizedMake.length).trim();
+      if (!rest) return { make };
+      const sameMake = await fetchListings({ city, make, limit: '100' });
+      const realModel = (sameMake?.data ?? []).find((v) => normalizeName(v.model) === rest)?.model;
+      return { make, model: realModel?.toLowerCase() ?? rest };
     }
   }
   return { make: candidate };
@@ -100,9 +124,9 @@ function toSlug(make: string, model?: string): string {
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const city = decodeURIComponent(params.city).toLowerCase();
   const cityName = toDisplayName(city);
-  const { make, model } = await splitMakeModel(params.makeModel);
-  const makeName = toDisplayName(make);
-  const modelName = model ? toDisplayName(model) : null;
+  const { make, model } = await splitMakeModel(city, params.makeModel);
+  const makeName = toVehicleLabel(make);
+  const modelName = model ? toVehicleLabel(model) : null;
   const vehicleName = modelName ? `${makeName} ${modelName}` : makeName;
 
   const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
@@ -135,14 +159,14 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 export default async function CityMakeModelCarRentalPage({ params, searchParams }: PageProps) {
   const city = decodeURIComponent(params.city).toLowerCase();
   const cityName = toDisplayName(city);
-  const { make, model } = await splitMakeModel(params.makeModel);
-  const makeName = toDisplayName(make);
-  const modelName = model ? toDisplayName(model) : null;
+  const { make, model } = await splitMakeModel(city, params.makeModel);
+  const makeName = toVehicleLabel(make);
+  const modelName = model ? toVehicleLabel(model) : null;
   const vehicleName = modelName ? `${makeName} ${modelName}` : makeName;
   const basePath = `/rent-a-car/${encodeURIComponent(city)}/${toSlug(make, model)}`;
 
   const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
-  if (rawPage === '1') redirect(basePath);
+  if (rawPage === '1') permanentRedirect(basePath);
   const page = parsePageParam(rawPage);
   if (page === null) notFound();
 
@@ -170,7 +194,7 @@ export default async function CityMakeModelCarRentalPage({ params, searchParams 
   const years = vehicles.map((v) => v.year);
   const minYear = Math.min(...years);
   const maxYear = Math.max(...years);
-  const modelLabels = models.map((m) => toDisplayName(m));
+  const modelLabels = models.map((m) => toVehicleLabel(m));
   const manualCount = vehicles.filter((v) => v.transmission === Transmission.MANUAL).length;
   const weeklyCount = vehicles.filter((v) => v.pricePerWeek).length;
   const monthlyCount = vehicles.filter((v) => v.pricePerMonth).length;

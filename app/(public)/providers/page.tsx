@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import { redirect, notFound } from 'next/navigation';
+import { permanentRedirect, notFound } from 'next/navigation';
 import { fetchAllProviders, fetchDistinctCities } from '../../../lib/api/server';
 import { ProvidersView } from '../../../components/providers/ProvidersView';
 import type { ProvidersListResponse } from '../../../lib/api/providers.api';
@@ -36,7 +36,7 @@ export default async function ProvidersPage({ searchParams }: PageProps) {
       if (key === 'page' || value === undefined) return;
       params.set(key, value);
     });
-    redirect(params.size ? `/providers?${params}` : '/providers');
+    permanentRedirect(params.size ? `/providers?${params}` : '/providers');
   }
 
   const page = parsePageParam(searchParams.page);

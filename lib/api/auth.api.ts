@@ -3,16 +3,46 @@ import type {
   ApiResponse,
   LoginCodeRequestResponse,
   LoginResponse,
-  RegisterResponse,
+  PhoneRegisterRequest,
+  PhoneSignInRequestResponse,
+  PhoneSignInSession,
+  PhoneVerifyResponse,
 } from '../../types/api.types';
-import type { RegisterFormValues } from '../validations/auth.schema';
 
 export const authApi = {
-  /** No password: the backend emails a 6-digit code (codeSent: true). */
-  register: async (data: RegisterFormValues) => {
-    const response = await apiClient.post<ApiResponse<RegisterResponse>>('/auth/register', data);
+  // ── Phone-first sign-in / sign-up (WhatsApp code) ──────────────────────────
+  // No X-Client-Type header: the web gets its refresh token as the backend's
+  // httpOnly cookie, exactly like /auth/code/verify. The web no longer calls
+  // POST /auth/register (it stays on the backend for installed apps).
+
+  /** Sends a WhatsApp code. Always the same 200 answer, whether or not the number has an account. */
+  requestPhoneCode: async (phone: string) => {
+    const response = await apiClient.post<ApiResponse<PhoneSignInRequestResponse>>(
+      '/auth/phone/request',
+      { phone },
+    );
     return response.data;
   },
+
+  /** A session (needsSignup: false) or a signupToken for /auth/phone/register (needsSignup: true). */
+  verifyPhoneCode: async (phone: string, code: string) => {
+    const response = await apiClient.post<ApiResponse<PhoneVerifyResponse>>('/auth/phone/verify', {
+      phone,
+      code,
+    });
+    return response.data;
+  },
+
+  /** Creates the account for a verified number and signs it in. */
+  registerWithPhone: async (data: PhoneRegisterRequest) => {
+    const response = await apiClient.post<ApiResponse<PhoneSignInSession>>(
+      '/auth/phone/register',
+      data,
+    );
+    return response.data;
+  },
+
+  // ── Email code (the "Sign in with email instead" backup) ───────────────────
 
   /** Always the same 200 answer, whether or not the email has an account. */
   requestLoginCode: async (email: string) => {

@@ -22,7 +22,9 @@ async function fetchJson<T>(path: string, revalidate: number): Promise<T | null>
 // and every individual vehicle page silently vanished from the sitemap.
 // Paginate properly instead, capped at 20 pages (2,000 vehicles) as a sanity
 // backstop against something going wrong, not a real expected ceiling.
-async function fetchVehicleUrls(): Promise<{ path: string; updatedAt: string }[]> {
+type VehicleEntry = { path: string; city: string | null; make: string; model: string; updatedAt: string };
+
+async function fetchVehicleUrls(): Promise<VehicleEntry[]> {
   type Vehicle = {
     slug: string;
     make: string;
@@ -32,7 +34,7 @@ async function fetchVehicleUrls(): Promise<{ path: string; updatedAt: string }[]
   };
   const PAGE_SIZE = 100;
   const MAX_PAGES = 20;
-  const results: { path: string; updatedAt: string }[] = [];
+  const results: VehicleEntry[] = [];
 
   for (let page = 1; page <= MAX_PAGES; page++) {
     const data = await fetchJson<{ data: Vehicle[]; meta: { hasNextPage: boolean } }>(
@@ -41,7 +43,13 @@ async function fetchVehicleUrls(): Promise<{ path: string; updatedAt: string }[]
     );
     if (!data?.data?.length) break;
     for (const v of data.data) {
-      results.push({ path: getVehicleUrl(v, v.showroom?.city), updatedAt: v.updatedAt });
+      results.push({
+        path: getVehicleUrl(v, v.showroom?.city),
+        city: v.showroom?.city?.toLowerCase().trim() ?? null,
+        make: v.make.toLowerCase(),
+        model: v.model?.toLowerCase() ?? '',
+        updatedAt: v.updatedAt,
+      });
     }
     if (!data.meta?.hasNextPage) break;
   }
@@ -81,30 +89,41 @@ function toSlug(make: string, model?: string): string {
 }
 
 // City+make(-model) pages (/rent-a-car/[city]/[makeModel]) are gated behind
-// real inventory (see that page's notFound() check) — mirror the same gate
-// here so the sitemap never links a combination that 404s. Not exhaustive
-// (only combos present in the first 100 listings per city are counted), but
-// every entry it does produce is backed by real, currently-live inventory.
-async function fetchCityMakeModelSlugs(cities: string[]): Promise<{ city: string; slug: string }[]> {
-  const perCity = await Promise.all(
-    cities.map(async (city) => {
-      const data = await fetchJson<{ data: { make: string; model: string }[] }>(
-        `/listings?city=${encodeURIComponent(city)}&limit=100`,
-        3600,
-      );
-      const seen = new Map<string, { city: string; slug: string }>();
-      for (const v of data?.data ?? []) {
-        const make = v.make.toLowerCase();
-        const model = v.model?.toLowerCase();
-        // Both the make-only and make+model pages are real, distinct,
-        // linkable landing pages — include both when a model is known.
-        seen.set(`${city}/${make}`, { city, slug: toSlug(make) });
-        if (model) seen.set(`${city}/${make}/${model}`, { city, slug: toSlug(make, model) });
-      }
-      return Array.from(seen.values());
-    }),
-  );
-  return perCity.flat();
+// real inventory (see that page's notFound() check) — built from the same
+// full listing crawl as the vehicle URLs, so every entry is backed by a live
+// car. Both the make-only and make+model pages are real, distinct landing
+// pages, so both are included. lastmod is the newest change among the cars
+// behind each page.
+function cityMakeModelPages(vehicles: VehicleEntry[]): { city: string; slug: string; lastModified: Date }[] {
+  const pages = new Map<string, { city: string; slug: string; lastModified: Date }>();
+  const add = (city: string, slug: string, updatedAt: Date) => {
+    const key = `${city}/${slug}`;
+    const existing = pages.get(key);
+    if (!existing || existing.lastModified < updatedAt) pages.set(key, { city, slug, lastModified: updatedAt });
+  };
+  for (const v of vehicles) {
+    if (!v.city) continue;
+    const updatedAt = new Date(v.updatedAt);
+    add(v.city, toSlug(v.make), updatedAt);
+    if (v.model) add(v.city, toSlug(v.make, v.model), updatedAt);
+  }
+  return Array.from(pages.values());
+}
+
+// Newest listing change, overall and per city — the honest lastmod for pages
+// whose content is the listings themselves (hubs, city pages, Price Index).
+function latestChange(vehicles: VehicleEntry[]): { overall?: Date; byCity: Map<string, Date> } {
+  let overall: Date | undefined;
+  const byCity = new Map<string, Date>();
+  for (const v of vehicles) {
+    const updatedAt = new Date(v.updatedAt);
+    if (!overall || overall < updatedAt) overall = updatedAt;
+    if (v.city) {
+      const current = byCity.get(v.city);
+      if (!current || current < updatedAt) byCity.set(v.city, updatedAt);
+    }
+  }
+  return { overall, byCity };
 }
 
 // Providers don't have their own distinct-cities endpoint, so this reuses the
@@ -151,106 +170,109 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchCities(),
   ]);
 
-  const [cityMakeModelSlugs, providerCities, carpool] = await Promise.all([
-    fetchCityMakeModelSlugs(cities),
+  const [providerCities, carpool] = await Promise.all([
     fetchProviderCities(cities),
     fetchCarpoolEntries(),
   ]);
 
+  // lastmod only where we know when the content really changed: listing-driven
+  // pages get the newest listing change behind them. Hand-written pages (guides,
+  // FAQ, about…) and pages driven by data we don't timestamp here (provider and
+  // carpool hubs) leave it out — a lastmod of "now" on every sitemap build
+  // teaches Google to ignore the field altogether.
+  const latest = latestChange(vehicleUrls);
+
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: BASE_URL,
-      lastModified: new Date(),
+      lastModified: latest.overall,
       changeFrequency: 'daily',
       priority: 1,
     },
     {
       url: `${BASE_URL}/rent-a-car`,
-      lastModified: new Date(),
+      lastModified: latest.overall,
       changeFrequency: 'hourly',
       priority: 0.9,
     },
     {
       url: `${BASE_URL}/rent-a-car/price-index`,
-      lastModified: new Date(),
+      lastModified: latest.overall,
       changeFrequency: 'weekly',
       priority: 0.6,
     },
     {
       url: `${BASE_URL}/providers`,
-      lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.7,
     },
     {
       url: `${BASE_URL}/carpool`,
-      lastModified: new Date(),
       changeFrequency: 'hourly',
       priority: 0.8,
     },
     {
       url: `${BASE_URL}/about`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.4,
     },
     {
       url: `${BASE_URL}/faq`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.4,
     },
     {
       url: `${BASE_URL}/contact`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.4,
     },
     {
       url: `${BASE_URL}/safety`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.4,
     },
     {
+      url: `${BASE_URL}/privacy`,
+      changeFrequency: 'yearly',
+      priority: 0.2,
+    },
+    {
+      url: `${BASE_URL}/terms`,
+      changeFrequency: 'yearly',
+      priority: 0.2,
+    },
+    {
       url: `${BASE_URL}/guides`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.4,
     },
     {
       url: `${BASE_URL}/guides/how-to-rent-a-car-in-pakistan`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${BASE_URL}/guides/monthly-vs-daily-car-rental`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${BASE_URL}/guides/how-to-list-your-car-for-rent`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${BASE_URL}/guides/how-carpooling-works`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${BASE_URL}/guides/how-to-offer-a-ride`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${BASE_URL}/guides/carpool-safety-pakistan`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
@@ -262,14 +284,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // sitemap entry to stay meaningful, unlike vehicles/providers which persist.
   const cityRoutes: MetadataRoute.Sitemap = cities.map((city) => ({
     url: `${BASE_URL}/rent-a-car/${encodeURIComponent(city)}`,
-    lastModified: new Date(),
+    lastModified: latest.byCity.get(city.toLowerCase().trim()),
     changeFrequency: 'weekly' as const,
     priority: 0.8,
   }));
 
-  // Real per-item timestamps (from the backend's `updatedAt`) rather than
-  // "now" on every build — a vehicle nobody's touched in weeks shouldn't
-  // claim to have changed today just because the sitemap regenerated.
+  // Real per-item timestamps (from the backend's `updatedAt`, which page views
+  // no longer touch) rather than "now" on every build.
   const vehicleRoutes: MetadataRoute.Sitemap = vehicleUrls.map(({ path, updatedAt }) => ({
     url: `${BASE_URL}${path}`,
     lastModified: new Date(updatedAt),
@@ -286,28 +307,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const providerCityRoutes: MetadataRoute.Sitemap = providerCities.map((city) => ({
     url: `${BASE_URL}/providers/${encodeURIComponent(city)}`,
-    lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.6,
   }));
 
-  const cityMakeModelRoutes: MetadataRoute.Sitemap = cityMakeModelSlugs.map(({ city, slug }) => ({
-    url: `${BASE_URL}/rent-a-car/${encodeURIComponent(city)}/${slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly' as const,
-    priority: 0.65,
-  }));
+  const cityMakeModelRoutes: MetadataRoute.Sitemap = cityMakeModelPages(vehicleUrls).map(
+    ({ city, slug, lastModified }) => ({
+      url: `${BASE_URL}/rent-a-car/${encodeURIComponent(city)}/${slug}`,
+      lastModified,
+      changeFrequency: 'weekly' as const,
+      priority: 0.65,
+    }),
+  );
 
   const carpoolCityRoutes: MetadataRoute.Sitemap = carpool.cities.map((city) => ({
     url: `${BASE_URL}/carpool/${encodeURIComponent(city)}`,
-    lastModified: new Date(),
     changeFrequency: 'daily' as const,
     priority: 0.7,
   }));
 
   const carpoolRouteRoutes: MetadataRoute.Sitemap = carpool.routes.map(({ origin, destination }) => ({
     url: `${BASE_URL}/carpool/${origin}-to-${destination}`,
-    lastModified: new Date(),
     changeFrequency: 'daily' as const,
     priority: 0.7,
   }));

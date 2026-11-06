@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import Link from 'next/link';
 import { fetchProviderBySlug, fetchDistinctCities, fetchAllProviders } from '../../../../lib/api/server';
 import { ProviderVehiclesSection } from '../../../../components/providers/ProviderVehiclesSection';
@@ -155,7 +155,7 @@ export default async function ProviderDetailOrCityPage({ params, searchParams }:
   const slug = decodeURIComponent(params.slug).toLowerCase();
   if (await isKnownCity(slug)) {
     const rawPage = Array.isArray(searchParams?.page) ? searchParams.page[0] : searchParams?.page;
-    if (rawPage === '1') redirect(`/providers/${slug}`);
+    if (rawPage === '1') permanentRedirect(`/providers/${slug}`);
     const page = parsePageParam(rawPage);
     if (page === null) notFound();
     return <ProviderCityHubPage city={slug} page={page} />;

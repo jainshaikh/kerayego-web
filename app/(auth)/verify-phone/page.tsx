@@ -18,8 +18,8 @@ const Spinner = () => (
 
 /**
  * The verify screen as its own page, for when the person isn't headed to a
- * gated layout: right after sign-in / sign-up (SignInCodeStep sends everyone
- * with mustVerifyPhone here, with the destination in `redirect`), or after a
+ * gated layout: right after sign-in / sign-up (useAuth().routeAfterSignIn sends
+ * everyone with mustVerifyPhone here, with the destination in `redirect`), or after a
  * 403 PHONE_NOT_VERIFIED on a public page (PhoneGateListener). The signed-in
  * layouts show the same card inline via PhoneVerificationGate.
  */

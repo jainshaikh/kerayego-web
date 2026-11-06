@@ -1,17 +1,19 @@
 import { z } from 'zod';
 import { Role } from '../../types/enums';
 
-// Sign-in and sign-up use a 6-digit code emailed by the backend
-// (POST /auth/code/request → POST /auth/code/verify). There are no passwords.
+// There are no passwords. Sign-in and sign-up start with the mobile number: a
+// 6-digit WhatsApp code (POST /auth/phone/request → /auth/phone/verify), then —
+// for a number with no account — the profile step (POST /auth/phone/register).
+// The number step reuses sendPhoneCodeSchema (phone.schema.ts). Email stays a
+// sign-in backup: a 6-digit emailed code (POST /auth/code/request → /code/verify).
 
 const emailSchema = z.string().trim().email('Please enter a valid email address');
 
-export const registerSchema = z.object({
-  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+/** The sign-up profile step after a verified number (POST /auth/phone/register). */
+export const phoneProfileSchema = z.object({
+  name: z.string().trim().min(1, 'Enter your name').max(100, 'Name must be 100 characters or fewer'),
   email: emailSchema,
-  // The backend normalises and validates the number (400 / 409 PHONE_TAKEN).
-  phone: z.string().trim().min(1, 'Mobile number is required').max(20),
-  role: z.enum([Role.USER, Role.PROVIDER]).default(Role.USER),
+  role: z.enum([Role.USER, Role.PROVIDER]),
 });
 
 export const requestCodeSchema = z.object({
@@ -26,6 +28,6 @@ export const verifyCodeSchema = z.object({
     .pipe(z.string().regex(/^\d{6}$/, 'Enter the 6-digit code')),
 });
 
-export type RegisterFormValues = z.infer<typeof registerSchema>;
+export type PhoneProfileFormValues = z.infer<typeof phoneProfileSchema>;
 export type RequestCodeFormValues = z.infer<typeof requestCodeSchema>;
 export type VerifyCodeFormValues = z.input<typeof verifyCodeSchema>;

@@ -90,14 +90,17 @@ apiClient.interceptors.response.use(
     }
 
     // Only attempt refresh on 401 from non-auth endpoints, and only once.
-    // A wrong sign-in code is a 401 (CODE_INVALID) — the caller shows it.
+    // A wrong sign-in code is a 401 (CODE_INVALID) on /auth/code/verify and
+    // /auth/phone/verify, and a stale sign-up token a 401 SIGNUP_TOKEN_INVALID
+    // on /auth/phone/register — the caller shows those, never a refresh.
     // Only 401 refreshes: the /users/me/phone/* endpoints answer 400/403/409/
     // 429/502/503 (a wrong WhatsApp code is a 400 CODE_INVALID), never 401.
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/refresh') &&
-      !originalRequest.url?.includes('/auth/code/')
+      !originalRequest.url?.includes('/auth/code/') &&
+      !originalRequest.url?.includes('/auth/phone/')
     ) {
       originalRequest._retry = true;
 

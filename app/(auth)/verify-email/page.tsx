@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { authApi } from '../../../lib/api/auth.api';
 import { useAuthStore } from '../../../store/auth.store';
+import { isIdentityVerified } from '../../../hooks/useAuth';
 import { setEmailVerifiedCookie } from '../../../lib/utils/auth-cookies';
 import { Button, Card } from '../../../components/ui';
 
@@ -40,11 +41,12 @@ function VerifyEmailContent() {
     // the client-known verification state and the edge cookie middleware.ts reads):
     // if the store already says verified, resync the cookie and send them straight
     // back to where they were headed instead of stranding them on this page.
-    if (isAuthenticated && user?.emailVerified) {
+    // A verified phone counts too (phone sign-ups start with emailVerified false).
+    if (isAuthenticated && user && isIdentityVerified(user)) {
       setEmailVerifiedCookie(true);
       router.replace(redirect || '/dashboard');
     }
-  }, [isAuthenticated, user?.emailVerified, redirect, router]);
+  }, [isAuthenticated, user, redirect, router]);
 
   useEffect(() => {
     if (!token) return;

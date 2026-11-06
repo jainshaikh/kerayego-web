@@ -78,8 +78,9 @@ export function middleware(request: NextRequest) {
   const isAuthenticated = !!userRoleCookie;
   const userRole = userRoleCookie?.value || null;
   // Set alongside userRole at sign-in (see hooks/useAuth.ts). Signing in with an
-  // emailed code proves the email, so this is 'false' only for an older session
-  // whose owner hasn't clicked their verification link yet.
+  // emailed code proves the email, and a WhatsApp code (phone sign-in / sign-up)
+  // proves the person, so it is set 'true' for both; it is 'false' only for an
+  // older session whose owner hasn't clicked their verification link yet.
   const isEmailVerified = emailVerifiedCookie?.value === 'true';
 
   // ── Redirect authenticated users away from auth pages ─────────────────────

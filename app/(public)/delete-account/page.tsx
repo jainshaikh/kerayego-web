@@ -7,6 +7,8 @@ import { DeleteAccountForm } from '../../../components/account/DeleteAccountForm
 // account and data (PROVIDER_APP_PLAN.md A16, A17, A20, A51). Same support email as
 // /contact, /privacy and /terms.
 const SUPPORT_EMAIL = 'jainshaikh@gmail.com';
+const SUPPORT_PHONE_DISPLAY = '+92 331 3693668';
+const SUPPORT_WHATSAPP_URL = 'https://wa.me/923313693668';
 
 const TITLE = 'Delete your KerayeGo account';
 const DESCRIPTION =
@@ -76,10 +78,17 @@ export default function DeleteAccountPage() {
           <h2 className="mb-2 text-base font-semibold text-ink">What is deleted</h2>
           <ul className="list-disc space-y-1.5 pl-5">
             <li>Your profile and account details, including your name.</li>
-            <li>Your contact details: email address and phone number.</li>
+            <li>Your contact details: mobile number and email address.</li>
+            <li>
+              Your WhatsApp settings. We stop sending you WhatsApp messages, and your mobile number
+              is free to use for a new account.
+            </li>
             <li>Your saved cars.</li>
             <li>Your personal cars, with their photos and documents.</li>
-            <li>Your driver details and documents. You are removed from every business you drive for.</li>
+            <li>
+              Your driver details and documents, including CNIC images, licence and selfie. You are
+              removed from every business you drive for.
+            </li>
             <li>
               If you own a business: the business itself, its cars, showrooms, photos and documents.
               Its managers and drivers keep their own accounts.
@@ -98,6 +107,10 @@ export default function DeleteAccountPage() {
               Car plate numbers, their reviews and ride counts stay with the car, so its history
               shows again if the same car is listed later.
             </li>
+            <li>
+              A one-way scrambled form of a driver&rsquo;s CNIC, used only to keep people banned for
+              safety reasons off KerayeGo. It can&rsquo;t be turned back into the number.
+            </li>
             <li>Records we are required to keep by law, and safety records.</li>
           </ul>
         </section>
@@ -109,7 +122,7 @@ export default function DeleteAccountPage() {
             account is deleted 72 hours later. To cancel before then, either:
           </p>
           <ul className="mt-2 list-disc space-y-1.5 pl-5">
-            <li>sign in again on the website or in either app, or</li>
+            <li>sign in again with your mobile number on the website or in either app, or</li>
             <li>open the &ldquo;Cancel deletion&rdquo; link in the email we sent you.</li>
           </ul>
           <p className="mt-2">Once your account has been deleted, it can&rsquo;t be brought back.</p>
@@ -136,14 +149,23 @@ export default function DeleteAccountPage() {
               <Mail className="h-5 w-5" />
             </span>
             <p>
-              Email us from the address on your account at{' '}
+              Message us on WhatsApp from the mobile number on your account at{' '}
+              <a
+                href={SUPPORT_WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-brand-700 hover:underline"
+              >
+                {SUPPORT_PHONE_DISPLAY}
+              </a>
+              , or email us from the address on your account at{' '}
               <a
                 href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Delete my KerayeGo account')}`}
                 className="font-semibold text-brand-700 hover:underline"
               >
                 {SUPPORT_EMAIL}
-              </a>{' '}
-              and we&rsquo;ll help you delete it.
+              </a>
+              . We&rsquo;ll confirm it&rsquo;s you and delete it.
             </p>
           </div>
         </section>

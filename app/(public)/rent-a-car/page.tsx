@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { redirect, notFound } from 'next/navigation';
+import { permanentRedirect, notFound } from 'next/navigation';
 import { fetchListings, fetchDistinctMakes, fetchDistinctCities, fetchPriceIndex } from '../../../lib/api/server';
 import { cityLabel, countWord, formatPKR } from '../../../lib/utils/copy';
 import { VehiclesView } from '../../../components/listings/VehiclesView';
@@ -43,7 +43,7 @@ export default async function RentACarPage({ searchParams }: PageProps) {
         params.append(key, value);
       }
     }
-    redirect(params.size ? `/rent-a-car?${params}` : '/rent-a-car');
+    permanentRedirect(params.size ? `/rent-a-car?${params}` : '/rent-a-car');
   }
   const page = parsePageParam(rawPage);
   if (page === null) {

@@ -22,7 +22,7 @@ import { USER_LOCATION_COOKIE, DEFAULT_NEARBY_RADIUS_KM, parseUserLocation } fro
 export const metadata: Metadata = {
   title: 'KerayeGo — Car Rental & Intercity Ride Sharing in Pakistan',
   description:
-    'Browse hundreds of rental vehicles from verified providers across Karachi, Lahore, and Islamabad. Compare prices, check availability, and send inquiries in seconds.',
+    'Rent a car with a driver from verified providers in Karachi, Lahore, Islamabad and more, or share an intercity ride. Compare real prices and send a free request.',
   openGraph: {
     title: 'KerayeGo — Find Your Perfect Car',
     description: 'Verified rental providers. No hidden fees. Book in minutes.',
@@ -184,9 +184,10 @@ export default async function HomePage() {
                   {location ? `Hand-picked vehicles near ${location.label}` : 'Hand-picked vehicles'}
                 </h2>
                 <p className="mt-2 text-sm text-text-muted">
+                  {/* Backend orders featured cars by inquiries, then newest — not by rating. */}
                   {location
-                    ? 'Chosen from our highest-rated providers near you'
-                    : 'Chosen from our highest-rated providers'}
+                    ? 'Popular and newly listed cars near you'
+                    : 'Popular and newly listed cars from verified providers'}
                 </p>
               </div>
               <Link
@@ -247,7 +248,7 @@ export default async function HomePage() {
               Own a fleet? List it here.
             </h2>
             <p className="mx-auto mt-5 max-w-lg text-[15px] leading-relaxed text-white/55">
-              Join hundreds of verified providers reaching thousands of renters across Pakistan.
+              Put your cars in front of people looking for a rental with a driver across Pakistan.
               Listing is free — you only ever talk to renters who are ready to book.
             </p>
             <Link

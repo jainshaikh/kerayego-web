@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import { fetchTrips, fetchTripMetaCities } from '../../../../lib/api/server';
@@ -130,7 +130,7 @@ export default async function CarpoolRoutePage({ params, searchParams }: PagePro
         params.append(key, value);
       }
     }
-    redirect(params.size ? `${basePath}?${params}` : basePath);
+    permanentRedirect(params.size ? `${basePath}?${params}` : basePath);
   }
   const page = parsePageParam(rawPage);
   if (page === null) notFound();

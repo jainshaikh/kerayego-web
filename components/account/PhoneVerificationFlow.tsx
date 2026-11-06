@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import {
   useSendPhoneCode,
   useVerifyPhoneCode,
 } from '../../hooks/usePhoneVerification';
+import { useCountdown } from '../../hooks/useCountdown';
 import { PhoneErrorCode, type User } from '../../types/api.types';
 import { Button, Input } from '../ui';
 
@@ -31,17 +32,6 @@ interface PhoneVerificationFlowProps {
 }
 
 type Step = { kind: 'phone' } | { kind: 'code'; phone: string };
-
-/** Counts a resend cooldown down to 0, one second at a time. */
-function useCountdown() {
-  const [seconds, setSeconds] = useState(0);
-  useEffect(() => {
-    if (seconds <= 0) return;
-    const timer = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(timer);
-  }, [seconds]);
-  return [seconds, setSeconds] as const;
-}
 
 /**
  * WhatsApp phone verification (contract §7): step 1 sends a code to the

@@ -119,6 +119,7 @@ export function InviteMemberModal({ open, onOpenChange, roles }: InviteMemberMod
         />
         <Input
           label="Mobile number (optional)"
+          helper="Add it so they can find this invitation by signing in with their number."
           type="tel"
           placeholder="+92 300 1234567"
           maxLength={INVITE_LIMITS.phone}

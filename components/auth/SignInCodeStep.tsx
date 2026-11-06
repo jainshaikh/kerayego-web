@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 
 import { verifyCodeSchema, type VerifyCodeFormValues } from '../../lib/validations/auth.schema';
-import { useAuth } from '../../hooks/useAuth';
+import { isIdentityVerified, useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../hooks/useAccountDeletion';
 import { Button, Input } from '../ui';
 
@@ -26,9 +26,10 @@ interface SignInCodeStepProps {
 }
 
 /**
- * The 6-digit code step shared by sign-in and sign-up: POST /auth/code/verify
- * (the refresh token arrives as an httpOnly cookie), then the same redirect the
- * old password sign-in did — by role, or back to `callbackUrl`.
+ * The emailed 6-digit code step of "Sign in with email instead" (/login?method=email):
+ * POST /auth/code/verify (the refresh token arrives as an httpOnly cookie), then the
+ * shared post-sign-in redirect — by role, or back to `callbackUrl`. Sign-up is
+ * phone-only (PhoneAuthFlow).
  */
 export function SignInCodeStep({
   email,
@@ -39,7 +40,7 @@ export function SignInCodeStep({
   onChangeEmail,
 }: SignInCodeStepProps) {
   const router = useRouter();
-  const { verifyCode, requestCode, getDashboardRoute } = useAuth();
+  const { verifyCode, requestCode, routeAfterSignIn } = useAuth();
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(resendAfterSeconds);
@@ -67,7 +68,8 @@ export function SignInCodeStep({
 
       toast.success(deletionCancelled ? DELETION_CANCELLED_MESSAGE : welcomeMessage);
 
-      if (!user.emailVerified) {
+      // Only older sessions: a correct email code proves the email. A verified phone is enough.
+      if (!isIdentityVerified(user)) {
         router.push(
           callbackUrl ? `/verify-email?redirect=${encodeURIComponent(callbackUrl)}` : '/verify-email',
         );
@@ -75,18 +77,9 @@ export function SignInCodeStep({
         return;
       }
 
-      // Pass user directly — getDashboardRoute() can't read the store update until re-render
-      const destination = callbackUrl || getDashboardRoute(user);
-
-      // The WhatsApp phone check comes first (contract §7.1), then on to the destination.
-      if (user.mustVerifyPhone) {
-        router.push(`/verify-phone?redirect=${encodeURIComponent(destination)}`);
-        router.refresh();
-        return;
-      }
-
-      router.push(destination);
-      router.refresh();
+      // Pass user directly — the store update isn't readable until re-render. The WhatsApp
+      // phone check comes first (contract §7.1), then on to the destination.
+      routeAfterSignIn(user, callbackUrl);
     } catch (error: unknown) {
       setError('code', {
         message: getApiErrorMessage(error, 'Could not sign you in. Please try again.'),

@@ -51,6 +51,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: `/carpool/${canonicalRoute}/${t.id}`,
     },
+    // A trip is user-posted (it goes live with no review) and lasts days, so
+    // it stays out of the index — Google's guidance on open platforms is to
+    // keep unvetted user content from being indexed. The route page
+    // (/carpool/[route]) is the durable landing page; links are still followed.
+    robots: { index: false, follow: true },
     openGraph: {
       title: `${titleCase(t.originCity)} → ${titleCase(t.destinationCity)}`,
       description,

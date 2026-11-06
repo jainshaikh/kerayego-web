@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { redirect, notFound } from 'next/navigation';
+import { permanentRedirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight, MapPin } from 'lucide-react';
 import {
@@ -142,7 +142,7 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
 
   const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
   if (rawPage === '1') {
-    redirect(basePath);
+    permanentRedirect(basePath);
   }
   const page = parsePageParam(rawPage);
   if (page === null) {

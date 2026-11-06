@@ -88,17 +88,19 @@ export type PhoneSendCodeResponse =
 
 /** Error-envelope codes of the phone-verification endpoints and the gate. */
 export const PhoneErrorCode = {
-  /** 409 — another account holds this number and has verified it. */
+  /** 409 — another account holds this number and has verified it (POST /auth/phone/register:
+   * an account was made with this number after the code was checked). */
   PHONE_TAKEN: 'PHONE_TAKEN',
   /** 429 — within 60 s of the last code; carries retryAfterSeconds. */
   CODE_RESEND_TOO_SOON: 'CODE_RESEND_TOO_SOON',
-  /** 429 — 10 codes in 24 h for this account. */
+  /** 429 — 10 codes in 24 h for this account (per number on POST /auth/phone/request). */
   CODE_LIMIT_REACHED: 'CODE_LIMIT_REACHED',
   /** 502 — Meta rejected the message (its message is shown). */
   WHATSAPP_SEND_FAILED: 'WHATSAPP_SEND_FAILED',
   /** 503 — WhatsApp isn't configured on the server. */
   WHATSAPP_UNAVAILABLE: 'WHATSAPP_UNAVAILABLE',
-  /** 400 (not 401, so no token refresh) — wrong or expired code. */
+  /** Wrong or expired code: 400 on /users/me/phone/verify, 401 on /auth/phone/verify (client.ts
+   * never refreshes for /auth/phone/*). */
   CODE_INVALID: 'CODE_INVALID',
   /** 403 from any gated endpoint — the account must verify its phone first. */
   PHONE_NOT_VERIFIED: 'PHONE_NOT_VERIFIED',
@@ -119,12 +121,56 @@ export interface LoginCodeRequestResponse {
   resendAfterSeconds: number;
 }
 
-/** POST /auth/register without a password: a sign-in code was emailed (codeSent: true). */
-export interface RegisterResponse {
-  user: AuthUser & { phone: string | null; createdAt: string };
-  message: string;
-  codeSent: boolean;
+// ─── Phone-first sign-in / sign-up (POST /auth/phone/*) ─────────────────────
+
+/** POST /auth/phone/request { phone } — the same answer whether or not the number has an account. */
+export interface PhoneSignInRequestResponse {
+  /** The number in E.164 ("+923001234567"). */
+  phone: string;
+  expiresInMinutes: number;
+  resendInSeconds: number;
+  channel: 'whatsapp';
 }
+
+/** A signed-in session from POST /auth/phone/verify or /auth/phone/register. The refresh
+ * token arrives as the backend's httpOnly cookie (`refreshToken` is only in the body for
+ * X-Client-Type: mobile, which the web never sends). */
+export interface PhoneSignInSession extends LoginResponse {
+  needsSignup: false;
+  refreshToken?: string;
+}
+
+/** POST /auth/phone/verify for a number with no live account: no session, no cookie. */
+export interface PhoneSignupNeeded {
+  needsSignup: true;
+  /** The verified number in E.164. */
+  phone: string;
+  /** Proves the number for POST /auth/phone/register; valid `expiresInMinutes` (30). */
+  signupToken: string;
+  expiresInMinutes: number;
+}
+
+/** POST /auth/phone/verify { phone, code }. */
+export type PhoneVerifyResponse = PhoneSignInSession | PhoneSignupNeeded;
+
+/** POST /auth/phone/register body. `role` defaults to USER on the backend. */
+export interface PhoneRegisterRequest {
+  signupToken: string;
+  name: string;
+  email: string;
+  role?: Role.USER | Role.PROVIDER;
+}
+
+/** Error-envelope codes of POST /auth/phone/register (besides PhoneErrorCode.PHONE_TAKEN). */
+export const PhoneSignupErrorCode = {
+  /** 401 — bad or expired signupToken: start again at the number step. */
+  SIGNUP_TOKEN_INVALID: 'SIGNUP_TOKEN_INVALID',
+  /** 409 — the email is on another account: sign in with email instead. */
+  EMAIL_TAKEN: 'EMAIL_TAKEN',
+  /** 403 — the email is blocked. */
+  IDENTITY_BLOCKED: 'IDENTITY_BLOCKED',
+} as const;
+export type PhoneSignupErrorCode = (typeof PhoneSignupErrorCode)[keyof typeof PhoneSignupErrorCode];
 
 // ─── Provider ───────────────────────────────────────────────────────────────
 
