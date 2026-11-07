@@ -1,10 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useParams } from 'next/navigation';
-import { useMyUserVehicle } from '../../hooks/useUserVehicles';
+import { useParams, useRouter } from 'next/navigation';
+import { useDeleteUserVehicle, useMyUserVehicle } from '../../hooks/useUserVehicles';
+import { apiErrorMessage } from '../../lib/ops/apiError';
 import { StatusBadge } from '../common/StatusBadge';
+import { ConfirmModal } from '../ops/ConfirmModal';
+import { Button } from '../ui';
 
 const DOC_LABELS: Record<string, string> = {
   ID_DOCUMENT: 'CNIC (National ID)',
@@ -21,7 +25,23 @@ interface MyVehicleDetailProps {
 export function MyVehicleDetail({ backHref }: MyVehicleDetailProps) {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
   const { data: vehicle, isLoading, isError } = useMyUserVehicle(id);
+  const deleteVehicle = useDeleteUserVehicle();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const onConfirmDelete = () => {
+    setDeleteError(null);
+    deleteVehicle.mutate(id, {
+      onSuccess: () => {
+        setConfirmDelete(false);
+        router.push(backHref);
+      },
+      // e.g. the backend's 409 "has an upcoming or ongoing trip" — shown in the dialog.
+      onError: (error) => setDeleteError(apiErrorMessage(error)),
+    });
+  };
 
   if (isLoading) {
     return <div className="max-w-2xl animate-pulse h-64 bg-white rounded-xl border border-slate-200" />;
@@ -115,6 +135,49 @@ export function MyVehicleDetail({ backHref }: MyVehicleDetailProps) {
           ))}
         </ul>
       </div>
+
+      <div className="rounded-xl border border-red-200 bg-white p-6">
+        <h2 className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2">Delete vehicle</h2>
+        {vehicle.status === 'SUSPENDED' ? (
+          <p className="text-sm text-slate-500">
+            This vehicle was suspended by KerayeGo, so it can&apos;t be deleted — contact support.
+          </p>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Permanently removes this vehicle with all its photos and documents. Past trips keep their history.
+          </p>
+        )}
+        <Button
+          variant="danger-outline"
+          size="sm"
+          className="mt-3"
+          disabled={vehicle.status === 'SUSPENDED'}
+          onClick={() => {
+            setDeleteError(null);
+            setConfirmDelete(true);
+          }}
+        >
+          Delete vehicle
+        </Button>
+      </div>
+
+      <ConfirmModal
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete this vehicle?"
+        description={`This permanently deletes ${vehicle.make} ${vehicle.model} (${vehicle.plateNumber}) with all its photos and documents. This can't be undone.`}
+        confirmLabel="Delete vehicle"
+        cancelLabel="Keep it"
+        destructive
+        loading={deleteVehicle.isPending}
+        onConfirm={onConfirmDelete}
+      >
+        {deleteError ? (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {deleteError}
+          </p>
+        ) : null}
+      </ConfirmModal>
     </div>
   );
 }

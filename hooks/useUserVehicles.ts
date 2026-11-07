@@ -44,3 +44,18 @@ export function useCreateUserVehicle() {
     onError: (error: unknown) => toast.error(errorMessage(error, 'Failed to submit vehicle')),
   });
 }
+
+/** Errors are left to the caller, which shows the backend's 409 reason inline. */
+export function useDeleteUserVehicle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => userVehiclesApi.remove(id),
+    onSuccess: (_data, id) => {
+      // Drop the deleted car's detail rather than refetch it (it would 404
+      // while the page is still mounted), then refresh the lists.
+      queryClient.removeQueries({ queryKey: ['user-vehicles', 'my', 'detail', id], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['user-vehicles', 'my'] });
+      toast.success('Vehicle deleted');
+    },
+  });
+}

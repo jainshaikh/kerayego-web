@@ -92,4 +92,13 @@ export const userVehiclesApi = {
     const res = await apiClient.get<ApiResponse<UserVehicleDetail>>(`/my/vehicles/${id}`);
     return res.data.data;
   },
+
+  /**
+   * Permanently deletes the owner's car with its photos and documents (204, no
+   * body). 409 while it's SUSPENDED or has a PENDING_REVIEW/ACTIVE/IN_PROGRESS
+   * trip; past trips keep their history without the car.
+   */
+  remove: async (id: string): Promise<void> => {
+    await apiClient.delete(`/my/vehicles/${id}`);
+  },
 };

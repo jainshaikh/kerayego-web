@@ -5,7 +5,16 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        // AWS S3 — matches https://<bucket>.s3.<region>.amazonaws.com/...
+        // Google Cloud Storage public bucket — https://storage.googleapis.com/<bucket>/...
+        // (backend GcsAdapter). If GCS_PUBLIC_BASE_URL points at a CDN domain,
+        // add that hostname here too.
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        pathname: '/**',
+      },
+      {
+        // Legacy AWS S3 test uploads — remove once old rows are cleared.
+        // Matches https://<bucket>.s3.<region>.amazonaws.com/...
         protocol: 'https',
         hostname: '*.s3.*.amazonaws.com',
         pathname: '/**',
