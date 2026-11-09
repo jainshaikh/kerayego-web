@@ -1,3 +1,5 @@
+import { MAX_VEHICLE_PHOTOS } from '../api/vehicles.api';
+import { MAX_ORIGINAL_PHOTO_BYTES } from './compressImage';
 import type { FleetVehicleImage } from '../../types/fleet.types';
 
 // A car's photos (kerayego-backend vehicles.service.ts addImage / removeImage /
@@ -21,6 +23,57 @@ export function moveImage(ids: readonly string[], id: string, toIndex: number): 
 
 export function sameOrder(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+// What POST /media/upload?context=vehicle accepts (kerayego-backend
+// media.service.ts ALLOWED_IMAGE_TYPES / MAX_IMAGE_BYTES). A picked photo is
+// compressed first (compressImage.ts), so a bigger original is fine as long as
+// the photo that's uploaded is at most MAX_VEHICLE_PHOTO_BYTES.
+export const VEHICLE_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const VEHICLE_PHOTO_ACCEPT = VEHICLE_PHOTO_TYPES.join(',');
+export const MAX_VEHICLE_PHOTO_BYTES = 5 * 1024 * 1024;
+
+/** Why this picked file can't be used, or null if it's fine (before compression). */
+export function photoFileProblem(file: Pick<File, 'type' | 'size' | 'name'>): string | null {
+  if (!(VEHICLE_PHOTO_TYPES as readonly string[]).includes(file.type)) {
+    return `${file.name}: only JPEG, PNG or WebP photos`;
+  }
+  if (file.size > MAX_ORIGINAL_PHOTO_BYTES) {
+    return `${file.name}: too large (over ${MAX_ORIGINAL_PHOTO_BYTES / 1024 / 1024} MB) — pick a smaller photo`;
+  }
+  return null;
+}
+
+/** Why the compressed photo would still be refused by the backend, or null. */
+export function compressedPhotoProblem(file: Pick<File, 'size' | 'name'>): string | null {
+  return file.size > MAX_VEHICLE_PHOTO_BYTES
+    ? `still larger than 5 MB after compressing — pick a smaller photo`
+    : null;
+}
+
+/**
+ * Splits picked files into the ones to upload — valid, in picked order, no more
+ * than `room` (the photos still allowed) — and a message per file left out.
+ */
+export function pickPhotoFiles<T extends Pick<File, 'type' | 'size' | 'name'>>(
+  files: readonly T[],
+  room: number,
+): { accepted: T[]; rejected: string[] } {
+  const accepted: T[] = [];
+  const rejected: string[] = [];
+  let skippedForRoom = 0;
+  for (const file of files) {
+    const problem = photoFileProblem(file);
+    if (problem) rejected.push(problem);
+    else if (accepted.length < room) accepted.push(file);
+    else skippedForRoom += 1;
+  }
+  if (skippedForRoom > 0) {
+    rejected.push(
+      `${skippedForRoom} photo${skippedForRoom === 1 ? '' : 's'} left out — a car can have up to ${MAX_VEHICLE_PHOTOS} photos`,
+    );
+  }
+  return { accepted, rejected };
 }
 
 /** POST /vehicles/:id/images body from the upload: width/height only when they're whole numbers ≥ 0. */

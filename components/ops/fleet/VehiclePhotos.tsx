@@ -7,8 +7,14 @@ import { Button, Card } from '../../ui';
 import { cn } from '../../../lib/utils/cn';
 import { MAX_VEHICLE_PHOTOS } from '../../../lib/api/vehicles.api';
 import { apiErrorMessage } from '../../../lib/ops/apiError';
-import { moveImage, sortedImages } from '../../../lib/ops/photos';
-import { useAddVehiclePhoto, useRemoveVehiclePhoto, useReorderVehiclePhotos } from '../../../hooks/useVehicles';
+import { VEHICLE_PHOTO_ACCEPT, moveImage, pickPhotoFiles, sortedImages } from '../../../lib/ops/photos';
+import {
+  useAddVehiclePhotos,
+  useRemoveVehiclePhoto,
+  useReorderVehiclePhotos,
+  photoProgressLabel,
+  type PhotoUploadProgress,
+} from '../../../hooks/useVehicles';
 import type { FleetVehicleImage } from '../../../types/fleet.types';
 import { ConfirmModal } from '../ConfirmModal';
 
@@ -20,14 +26,15 @@ interface VehiclePhotosProps {
 }
 
 // A car's photos, ported from the KerayeGo Partner app's fleet detail: add
-// (uploaded into the car's folder, watermarked by the backend, then attached),
+// several at once (each uploaded into the car's folder, watermarked by the
+// backend, then attached — one after another, in the order picked),
 // remove (asks first) and — beyond the Partner app, which has no reorder
 // control yet though its API supports it — move left / right and "Make cover".
 // The first photo is the cover customers see. Up to MAX_VEHICLE_PHOTOS.
 export function VehiclePhotos({ vehicleId, images, editable }: VehiclePhotosProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = useState(0);
-  const addPhoto = useAddVehiclePhoto(vehicleId, setProgress);
+  const [progress, setProgress] = useState<PhotoUploadProgress | null>(null);
+  const addPhotos = useAddVehiclePhotos(vehicleId, setProgress);
   const removePhoto = useRemoveVehiclePhoto(vehicleId);
   const reorder = useReorderVehiclePhotos(vehicleId);
   const [removeId, setRemoveId] = useState<string | null>(null);
@@ -35,19 +42,35 @@ export function VehiclePhotos({ vehicleId, images, editable }: VehiclePhotosProp
   const sorted = sortedImages(images);
   const ids = sorted.map((image) => image.id);
   const canAddMore = sorted.length < MAX_VEHICLE_PHOTOS;
-  const busy = addPhoto.isPending || removePhoto.isPending || reorder.isPending;
+  const busy = addPhotos.isPending || removePhoto.isPending || reorder.isPending;
 
-  const onFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const onFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(event.target.files ?? []);
     event.target.value = '';
-    if (!file) return;
-    setProgress(0);
-    addPhoto.mutate(file, {
-      // e.g. 400 "Maximum 10 images per vehicle", a file over 5 MB, or 403 for
-      // a manager (the backend's photo upload is business admin only today).
-      onError: (error) => toast.error(`Photo not added: ${apiErrorMessage(error)}`),
+    if (picked.length === 0) return;
+    // Wrong type / over 5 MB / past the 10-photo limit are said up front
+    // instead of failing one by one on the server.
+    const { accepted, rejected } = pickPhotoFiles(picked, MAX_VEHICLE_PHOTOS - sorted.length);
+    rejected.forEach((message) => toast.error(message));
+    if (accepted.length === 0) return;
+    setProgress(null);
+    addPhotos.mutate(accepted, {
+      onSuccess: ({ added, failed }) => {
+        if (added.length > 0) {
+          toast.success(added.length === 1 ? 'Photo added' : `${added.length} photos added`);
+        }
+        // e.g. 400 "Maximum 10 images per vehicle" or a network error — the
+        // rest of the batch still went through.
+        failed.forEach(({ fileName, error }) =>
+          toast.error(`${fileName} not added: ${apiErrorMessage(error)}`),
+        );
+      },
+      onError: (error) => toast.error(`Photos not added: ${apiErrorMessage(error)}`),
+      onSettled: () => setProgress(null),
     });
   };
+
+  const uploadLabel = progress ? photoProgressLabel(progress) : 'Preparing…';
 
   const move = (id: string, toIndex: number) => {
     reorder.mutate(moveImage(ids, id, toIndex), {
@@ -74,13 +97,17 @@ export function VehiclePhotos({ vehicleId, images, editable }: VehiclePhotosProp
             Photos ({sorted.length}/{MAX_VEHICLE_PHOTOS})
           </h2>
           {editable && sorted.length > 1 ? (
-            <p className="mt-0.5 text-xs text-text-muted">The first photo is the cover. Use the arrows to reorder.</p>
+            <p className="mt-0.5 text-xs text-text-muted">
+              The first photo is the cover. Use the arrows or &ldquo;Make cover&rdquo; to reorder.
+            </p>
+          ) : editable && canAddMore ? (
+            <p className="mt-0.5 text-xs text-text-muted">Select several at once. Large photos are shrunk automatically.</p>
           ) : null}
         </div>
         {editable && canAddMore ? (
-          <Button size="sm" variant="secondary" loading={addPhoto.isPending} disabled={busy} onClick={() => inputRef.current?.click()}>
+          <Button size="sm" variant="secondary" loading={addPhotos.isPending} disabled={busy} onClick={() => inputRef.current?.click()}>
             <ImagePlus className="h-3.5 w-3.5" />
-            {addPhoto.isPending ? `Uploading ${progress}%` : 'Add photo'}
+            {addPhotos.isPending ? uploadLabel : 'Add photos'}
           </Button>
         ) : null}
       </div>
@@ -155,7 +182,14 @@ export function VehiclePhotos({ vehicleId, images, editable }: VehiclePhotosProp
         </div>
       )}
 
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} className="sr-only" />
+      <input
+        ref={inputRef}
+        type="file"
+        accept={VEHICLE_PHOTO_ACCEPT}
+        multiple
+        onChange={onFiles}
+        className="sr-only"
+      />
 
       <ConfirmModal
         open={!!removeId}

@@ -3,7 +3,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { mediaApi } from '../lib/api/media.api';
 import { vehiclesApi, type CreateVehiclePayload, type UpdateVehiclePayload } from '../lib/api/vehicles.api';
-import { imagePayloadFromUpload } from '../lib/ops/photos';
+import { compressPhoto } from '../lib/ops/compressImage';
+import { compressedPhotoProblem, imagePayloadFromUpload } from '../lib/ops/photos';
 import { trackEvent } from '../lib/utils/analytics';
 import type { FleetListFilters, FleetVehicle, FleetVehicleImage } from '../types/fleet.types';
 import { providerQueryKeys } from './useProviderProfile';
@@ -119,24 +120,103 @@ function useRefreshPhotos(id: string) {
 }
 
 /**
- * Uploads a file into the car's folder (context=vehicle, entityId = the car,
- * so the backend names and watermarks it) and attaches it as the last photo.
- * If attaching fails (e.g. 10 photos already) the uploaded file is deleted
- * again, best effort, and the attach error is thrown.
+ * Compresses the photo in the browser (compressImage.ts — at most 2048 px,
+ * JPEG, aiming for ≤ 1.5 MB; never over the backend's 5 MB), uploads it into
+ * the car's folder (context=vehicle, entityId = the car, so the backend names
+ * and watermarks it) and attaches it as the last photo. If attaching fails
+ * (e.g. 10 photos already) the uploaded file is deleted again, best effort,
+ * and the attach error is thrown.
  */
-export function useAddVehiclePhoto(id: string, onProgress?: (percent: number) => void) {
+async function addVehiclePhoto(
+  vehicleId: string,
+  file: File,
+  onStage?: (stage: PhotoUploadStage, percent: number) => void,
+): Promise<FleetVehicleImage> {
+  onStage?.('compressing', 0);
+  const compressed = await compressPhoto(file);
+  const problem = compressedPhotoProblem(compressed);
+  if (problem) throw new Error(problem);
+  onStage?.('uploading', 0);
+  const upload = await mediaApi.upload(compressed, 'vehicle', undefined, vehicleId, (percent) =>
+    onStage?.('uploading', percent),
+  );
+  try {
+    return await vehiclesApi.addImage(vehicleId, imagePayloadFromUpload(upload));
+  } catch (error) {
+    await mediaApi.delete(upload.publicId).catch(() => undefined);
+    throw error;
+  }
+}
+
+export type PhotoUploadStage = 'compressing' | 'uploading';
+
+/** Where a multi-photo upload is: photo `current` of `total`, being compressed or `percent` sent. */
+export interface PhotoUploadProgress {
+  current: number;
+  total: number;
+  stage: PhotoUploadStage;
+  percent: number;
+}
+
+/** "Compressing photo 2 of 5" / "Uploading photo 2 of 5 · 40%" (no "of 1" for a single photo). */
+export function photoProgressLabel({ current, total, stage, percent }: PhotoUploadProgress): string {
+  const which = total > 1 ? ` ${current} of ${total}` : '';
+  return stage === 'compressing' ? `Compressing photo${which}…` : `Uploading photo${which} · ${percent}%`;
+}
+
+export interface PhotoUploadResult {
+  added: FleetVehicleImage[];
+  failed: Array<{ fileName: string; error: unknown }>;
+}
+
+/**
+ * Adds several photos to a car, one after another and in the given order (so
+ * the first one picked becomes the cover of a car with no photos yet). A photo
+ * that fails doesn't stop the rest — the result lists what failed. Used by the
+ * edit page (VehiclePhotos) and right after "Add a car" saves the new car.
+ */
+export async function addVehiclePhotos(
+  vehicleId: string,
+  files: readonly File[],
+  onProgress?: (progress: PhotoUploadProgress) => void,
+): Promise<PhotoUploadResult> {
+  const result: PhotoUploadResult = { added: [], failed: [] };
+  for (let index = 0; index < files.length; index += 1) {
+    const file = files[index];
+    const report = (stage: PhotoUploadStage, percent: number) =>
+      onProgress?.({ current: index + 1, total: files.length, stage, percent });
+    try {
+      result.added.push(await addVehiclePhoto(vehicleId, file, report));
+    } catch (error) {
+      result.failed.push({ fileName: file.name, error });
+    }
+  }
+  return result;
+}
+
+/**
+ * The photos picked on "Add a car", uploaded right after the car is created
+ * (its id is only known then). Refreshes the car, which useCreateVehicle
+ * cached with no photos.
+ */
+export function useAddPhotosToNewVehicle(onProgress?: (progress: PhotoUploadProgress) => void) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vehicleId, files }: { vehicleId: string; files: readonly File[] }) =>
+      addVehiclePhotos(vehicleId, files, onProgress),
+    onSettled: (_result, _error, { vehicleId }) => {
+      void queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.vehicle(vehicleId) });
+      void queryClient.invalidateQueries({ queryKey: vehicleQueryKeys.lists });
+    },
+  });
+}
+
+export function useAddVehiclePhotos(id: string, onProgress?: (progress: PhotoUploadProgress) => void) {
   const refresh = useRefreshPhotos(id);
   return useMutation({
-    mutationFn: async (file: File): Promise<FleetVehicleImage> => {
-      const upload = await mediaApi.upload(file, 'vehicle', undefined, id, onProgress);
-      try {
-        return await vehiclesApi.addImage(id, imagePayloadFromUpload(upload));
-      } catch (error) {
-        await mediaApi.delete(upload.publicId).catch(() => undefined);
-        throw error;
-      }
-    },
-    onSuccess: refresh,
+    mutationFn: (files: readonly File[]) => addVehiclePhotos(id, files, onProgress),
+    // Some photos may have been added even when others failed.
+    onSettled: refresh,
   });
 }
 
