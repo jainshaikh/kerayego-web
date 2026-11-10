@@ -1,6 +1,6 @@
 import apiClient from './client';
 import type { ApiResponse, PaginationMeta } from '../../types/api.types';
-import type { PickupSource, TripStatus } from './trips.api';
+import type { PickupSource, TripStatus, TripStop } from './trips.api';
 
 export type TripInquiryStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
 
@@ -46,6 +46,14 @@ export interface TripInquiryTrip {
   isReturnTrip: boolean;
   fleetVehicle: TripInquiryFleetVehicle | null;
   providerProfile: { id: string; businessName: string } | null;
+  /**
+   * Only on GET /trip-inquiries/:id (the backend's INQUIRY_DETAIL_SELECT): the
+   * trip's whole route — pickups, then drop-offs, each by sortOrder — with the
+   * server time the driver first reached each stop. The rider's live view reads
+   * its map from here, because the public GET /trips/:id 404s once the trip
+   * has started.
+   */
+  stops?: Array<TripStop & { arrivedAt: string | null }>;
 }
 
 // Mirrors the backend's TRIP_FLEET_VEHICLE_DETAIL_SELECT (trip-fleet-vehicle.select.ts).

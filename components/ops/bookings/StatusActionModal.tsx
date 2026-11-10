@@ -24,8 +24,7 @@ const SUCCESS_TOAST: Partial<Record<BookingStatus, string>> = {
   CONTACTED: 'Marked as contacted',
   ACCEPTED: 'Request accepted',
   REJECTED: 'Request declined',
-  IN_PROGRESS: 'Trip started',
-  COMPLETED: 'Trip completed',
+  CANCELLED: 'Booking cancelled',
 };
 
 interface StatusActionModalProps {

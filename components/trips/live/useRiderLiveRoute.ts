@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { tripsApi } from '../../../lib/api/trips.api';
+import type { TripStop } from '../../../lib/api/trips.api';
 import { geoApi } from '../../../lib/api/geo.api';
 import { useTripRoomPresence } from '../../../hooks/useTripRoomPresence';
 import { useRideSocket } from '../../../hooks/useRideSocket';
@@ -12,11 +12,12 @@ interface DriverPosition {
   lng: number;
 }
 
-// Rider's data source for the whole route/stop list is the PUBLIC trip
-// endpoint, not the manifest (driver-only) — same as mobile's
-// useRiderLiveRoute, which uses tripsApi.getOne precisely because of that
-// restriction.
-export function useRiderLiveRoute(tripId: string, live: boolean) {
+// The rider's stop list comes from their own request (GET /trip-inquiries/:id
+// returns the trip's whole route as `trip.stops`), not from the public
+// GET /trips/:id, which 404s once the trip is IN_PROGRESS (until 2026-11-10 it
+// did, so the live map had no stops and no route line), and not from the
+// manifest, which is driver-only. Same source as mobile's useRiderLiveRoute.
+export function useRiderLiveRoute(tripId: string, routeStops: TripStop[], live: boolean) {
   useTripRoomPresence(tripId, live);
   const { onLocationUpdate } = useRideSocket();
   const [driverPosition, setDriverPosition] = useState<DriverPosition | null>(null);
@@ -31,13 +32,12 @@ export function useRiderLiveRoute(tripId: string, live: boolean) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, tripId]);
 
-  const { data: trip } = useQuery({
-    queryKey: ['trip', tripId],
-    queryFn: () => tripsApi.getById(tripId),
-    enabled: !!tripId,
+  // Pickups first, then drop-offs, each by sortOrder: the route line runs from
+  // the first pickup to the last drop-off.
+  const stops = [...routeStops].sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'PICKUP' ? -1 : 1;
+    return a.sortOrder - b.sortOrder;
   });
-
-  const stops = trip?.stops ?? [];
   const firstStop = stops[0];
   const lastStop = stops[stops.length - 1];
   const originPoint =

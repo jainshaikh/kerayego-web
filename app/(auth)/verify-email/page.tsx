@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { authApi } from '../../../lib/api/auth.api';
 import { useAuthStore } from '../../../store/auth.store';
-import { isIdentityVerified } from '../../../hooks/useAuth';
+import { isIdentityVerified, roleToRoute } from '../../../hooks/useAuth';
+import { safeRedirect } from '../../../lib/utils/safeRedirect';
 import { setEmailVerifiedCookie } from '../../../lib/utils/auth-cookies';
 import { Button, Card } from '../../../components/ui';
 
@@ -27,7 +28,8 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const emailParam = searchParams.get('email');
-  const redirect = searchParams.get('redirect');
+  // Same-site paths only (lib/utils/safeRedirect.ts) — anything else is dropped.
+  const redirect = safeRedirect(searchParams.get('redirect'));
   const loginHref = redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login';
 
   const { user, isAuthenticated, setUser } = useAuthStore();
@@ -44,7 +46,8 @@ function VerifyEmailContent() {
     // A verified phone counts too (phone sign-ups start with emailVerified false).
     if (isAuthenticated && user && isIdentityVerified(user)) {
       setEmailVerifiedCookie(true);
-      router.replace(redirect || '/dashboard');
+      // Back where they were headed, else their own role's dashboard.
+      router.replace(redirect ?? roleToRoute(user.role));
     }
   }, [isAuthenticated, user, redirect, router]);
 

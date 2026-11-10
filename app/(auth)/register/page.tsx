@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 
 import { PhoneAuthFlow } from '../../../components/auth/PhoneAuthFlow';
 import { Role } from '../../../types/enums';
+import { safeRedirect } from '../../../lib/utils/safeRedirect';
 import { Logo } from '../../../components/common/Logo';
 
 /**
@@ -17,7 +18,8 @@ import { Logo } from '../../../components/common/Logo';
  */
 function RegisterPageContent() {
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || searchParams.get('callbackUrl');
+  // Same-site paths only (lib/utils/safeRedirect.ts) — anything else is dropped.
+  const redirect = safeRedirect(searchParams.get('redirect') || searchParams.get('callbackUrl'));
   const loginHref = redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login';
   const initialRole =
     searchParams.get('role')?.toUpperCase() === Role.PROVIDER ? Role.PROVIDER : Role.USER;

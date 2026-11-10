@@ -7,24 +7,30 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1';
 
 interface FetchOptions {
-  revalidate?: number | false;
+  /** Seconds the response may be reused from Next's Data Cache (default 60). */
+  revalidate?: number;
   tags?: string[];
+  /**
+   * Never cache: `cache: 'no-store'`. (Until 2026-11-10 "no cache" was spelled
+   * `revalidate: false`, which this function turned into `revalidate: undefined`
+   * — and with no `cache` option Next 14 then *auto-caches* the fetch with no
+   * expiry, so vehicle detail pages were cached indefinitely.)
+   */
+  noStore?: boolean;
 }
 
 async function serverFetch<T>(
   path: string,
   options: FetchOptions = {},
 ): Promise<T | null> {
-  const { revalidate = 60, tags } = options;
+  const { revalidate = 60, tags, noStore = false } = options;
+  const headers = { 'Content-Type': 'application/json' };
 
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      next: {
-        revalidate: revalidate === false ? undefined : revalidate,
-        tags,
-      },
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const res = await fetch(
+      `${API_BASE}${path}`,
+      noStore ? { cache: 'no-store', headers } : { next: { revalidate, tags }, headers },
+    );
 
     if (!res.ok) return null;
 
@@ -63,8 +69,10 @@ export async function fetchListings(searchParams: Record<string, string | string
 }
 
 export async function fetchVehicleBySlug(slug: string) {
-  // No cache for detail pages — each SSR render increments viewCount
-  return serverFetch<ServerVehicleDetailResponse>(`/listings/${slug}`, { revalidate: false });
+  // Never cached: each SSR render increments viewCount, and price, status and
+  // booked-until must be current. generateMetadata and the page make the same
+  // GET in one render, which React de-duplicates — one request, one view.
+  return serverFetch<ServerVehicleDetailResponse>(`/listings/${slug}`, { noStore: true });
 }
 
 export async function fetchFeaturedListings(

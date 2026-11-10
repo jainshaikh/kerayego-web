@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { requestCodeSchema, type RequestCodeFormValues } from '../../../lib/validations/auth.schema';
 import { useAuth } from '../../../hooks/useAuth';
 import { getApiErrorMessage } from '../../../hooks/useAccountDeletion';
+import { safeRedirect } from '../../../lib/utils/safeRedirect';
 import { SignInCodeStep } from '../../../components/auth/SignInCodeStep';
 import { PhoneAuthFlow } from '../../../components/auth/PhoneAuthFlow';
 import { Button, Card, Input } from '../../../components/ui';
@@ -116,7 +117,8 @@ function LoginPageContent() {
   // vehicle/trip inquiry flows use `redirect` — accept either so signing in
   // from either path lands the user back where they actually meant to go,
   // instead of silently falling through to their dashboard.
-  const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect');
+  // Same-site paths only (lib/utils/safeRedirect.ts) — anything else is dropped.
+  const callbackUrl = safeRedirect(searchParams.get('callbackUrl') || searchParams.get('redirect'));
   const useEmail = searchParams.get('method') === 'email';
   const registerHref = callbackUrl
     ? `/register?redirect=${encodeURIComponent(callbackUrl)}`

@@ -6,11 +6,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCurrentAccount } from '../../../hooks/usePhoneVerification';
 import { PhoneVerificationCard } from '../../../components/account/PhoneVerificationCard';
-
-/** Only same-site paths — never an absolute or protocol-relative URL. */
-function safeRedirect(value: string | null): string | null {
-  return value && value.startsWith('/') && !value.startsWith('//') ? value : null;
-}
+import { safeRedirect } from '../../../lib/utils/safeRedirect';
 
 const Spinner = () => (
   <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />

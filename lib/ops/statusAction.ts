@@ -50,7 +50,7 @@ export function statusActionCopy(status: BookingStatus): StatusActionCopy {
       return {
         title: 'Accept request',
         explanation:
-          'Accept only after you have checked the customer’s documents. The car comes with your driver for the whole rental. Once accepted, only KerayeGo can change this request.',
+          'Accept only after you have checked the customer’s documents. The car comes with your driver for the whole rental. After accepting you can still change the driver or cancel the booking until the driver starts the job.',
         confirmLabel: 'Accept',
         notePlaceholder: 'Pickup details or anything else the customer should know…',
         destructive: false,
@@ -63,21 +63,16 @@ export function statusActionCopy(status: BookingStatus): StatusActionCopy {
         notePlaceholder: 'Let them know why, or suggest an alternative…',
         destructive: true,
       };
-    case 'IN_PROGRESS':
+    // Only before the driver starts the job (plan A71). There is no IN_PROGRESS
+    // or COMPLETED case: only the driver starts and ends a rental.
+    case 'CANCELLED':
       return {
-        title: 'Start rental trip',
-        explanation: 'Mark this rental trip as underway with the assigned driver and customer.',
-        confirmLabel: 'Start trip',
-        notePlaceholder: 'Optional pickup confirmation notes…',
-        destructive: false,
-      };
-    case 'COMPLETED':
-      return {
-        title: 'Complete rental trip',
-        explanation: 'Mark this rental trip as completed and returned.',
-        confirmLabel: 'Complete trip',
-        notePlaceholder: 'Optional completion or return inspection notes…',
-        destructive: false,
+        title: 'Cancel booking',
+        explanation:
+          'The customer and the assigned driver are told the booking is cancelled. Only possible before the driver starts the job. This can’t be undone.',
+        confirmLabel: 'Cancel booking',
+        notePlaceholder: 'Let the customer know why…',
+        destructive: true,
       };
     default:
       return {

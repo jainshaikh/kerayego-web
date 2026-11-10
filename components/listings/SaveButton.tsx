@@ -27,7 +27,7 @@ export function SaveButton({ vehicleId, size = 'md', className }: SaveButtonProp
     e.preventDefault();
     e.stopPropagation();
     if (!isAuthenticated) {
-      router.push(`/login?returnTo=${encodeURIComponent(pathname)}`);
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
       return;
     }
     if (isSaved) remove.mutate(vehicleId);

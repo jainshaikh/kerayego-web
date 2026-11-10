@@ -47,10 +47,17 @@ export interface BusinessBookingAction {
   label: string;
 }
 
-// The Partner app's BUSINESS_BOOKING_ACTIONS: each a move the backend's
-// BOOKING_TRANSITIONS lets the business make. PENDING → CANCELLED is also
-// allowed by the backend, but CANCELLED means the customer withdrew, so a
-// business declines with REJECTED instead.
+// The Partner app's BUSINESS_BOOKING_ACTIONS (src/types/enums.ts — change both
+// together): each a move the backend's BOOKING_TRANSITIONS lets the business
+// make, but not every such move (plan A71, 2026-11-09):
+// - A new or contacted request is turned down with REJECTED ("Decline").
+//   PENDING → CANCELLED is also allowed, but there CANCELLED means the
+//   customer withdrew.
+// - An accepted booking can be cancelled until the driver starts the job.
+// - **Only the assigned driver starts and ends a rental**, in the Partner
+//   app (POST /driver/jobs/:id/start, /end). A business never moves a booking
+//   to IN_PROGRESS or COMPLETED, although the backend's table still lets a
+//   PROVIDER do it through PATCH /booking-requests/:id/status.
 const BUSINESS_BOOKING_ACTIONS: Record<BookingStatus, BusinessBookingAction[]> = {
   PENDING: [
     { status: 'CONTACTED', label: 'Mark contacted' },
@@ -60,8 +67,8 @@ const BUSINESS_BOOKING_ACTIONS: Record<BookingStatus, BusinessBookingAction[]> =
     { status: 'ACCEPTED', label: 'Accept' },
     { status: 'REJECTED', label: 'Decline' },
   ],
-  ACCEPTED: [{ status: 'IN_PROGRESS', label: 'Start trip' }],
-  IN_PROGRESS: [{ status: 'COMPLETED', label: 'Complete trip' }],
+  ACCEPTED: [{ status: 'CANCELLED', label: 'Cancel booking' }],
+  IN_PROGRESS: [],
   REJECTED: [],
   CANCELLED: [],
   COMPLETED: [],
@@ -257,11 +264,17 @@ export function statusHistoryItems(booking: Pick<BookingRequest, 'statusHistory'
   return [...changes, { key: 'received', title: 'Request received', note: null, at: booking.createdAt }];
 }
 
-/** A line shown when the business has nothing left to do (null while it still can act). */
+/**
+ * A line above the status buttons saying what happens next — mostly that the
+ * business has nothing left to do; null for a new or contacted request. Only
+ * the driver starts and ends a rental (plan A71; the Partner app's wording).
+ */
 export function finishedStatusNote(status: BookingStatus): string | null {
   switch (status) {
     case 'ACCEPTED':
-      return 'You accepted this request. Only KerayeGo can change its status now; you can still change the driver until the job starts. If the job isn’t started before the booked period ends, KerayeGo closes it as Not started.';
+      return 'You accepted this request. The driver starts the job in the KerayeGo Partner app. Until then you can change the driver or cancel the booking. If the job hasn’t started by the end of the booked period, it is marked not started.';
+    case 'IN_PROGRESS':
+      return 'The driver has started this job. Only the driver can end it, in the KerayeGo Partner app.';
     case 'COMPLETED':
       return 'This rental is completed.';
     case 'NOT_STARTED':

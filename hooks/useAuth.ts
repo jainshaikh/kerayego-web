@@ -12,6 +12,7 @@ import type {
   PhoneSignupNeeded,
 } from '../types/api.types';
 import { Role } from '../types/enums';
+import { safeRedirect } from '../lib/utils/safeRedirect';
 
 /**
  * Whether the account may enter the portals: a verified email, or a verified phone (phone
@@ -22,7 +23,8 @@ export function isIdentityVerified(u: Pick<AuthUser, 'emailVerified' | 'phoneVer
   return u.emailVerified || u.phoneVerified === true;
 }
 
-function roleToRoute(role: string): string {
+/** The dashboard a role lands on after sign-in (and when no safe redirect is given). */
+export function roleToRoute(role: string): string {
   if (role === Role.ADMIN || role === Role.SUPER_ADMIN) return '/admin/dashboard';
   if (role === Role.PROVIDER) return '/provider/dashboard';
   return '/dashboard';
@@ -108,7 +110,8 @@ export function useAuth() {
    */
   const routeAfterSignIn = useCallback(
     (signedIn: AuthUser, callbackUrl: string | null) => {
-      const destination = callbackUrl || roleToRoute(signedIn.role);
+      // Only a same-site path is followed — never an absolute URL (open redirect).
+      const destination = safeRedirect(callbackUrl) ?? roleToRoute(signedIn.role);
       if (signedIn.mustVerifyPhone) {
         router.push(`/verify-phone?redirect=${encodeURIComponent(destination)}`);
       } else {

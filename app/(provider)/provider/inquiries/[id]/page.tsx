@@ -43,8 +43,9 @@ import { getVehicleUrl } from '../../../../../lib/utils/vehicleUrl';
 // starts, the driver's answer), where the job stands (text — the driver starts
 // and ends it in the Partner app) and the status history. A completed rental
 // the business admin hasn't rated the customer for yet gets a "Rate this
-// customer" card first (can('rateCustomers')). The customer's shared location
-// isn't shown: the Partner app shows it only to the job's driver.
+// customer" card first (can('rateCustomers')). Status buttons follow plan A71:
+// an accepted booking can be cancelled until the job starts; only the driver
+// starts and ends it. No customer location is shown anywhere (plan A72).
 export default function BookingRequestPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -146,6 +147,8 @@ export default function BookingRequestPage() {
         </SectionCard>
       ) : null}
 
+      {finishedNote ? <p className="text-sm text-text-muted">{finishedNote}</p> : null}
+
       {actions.length > 0 ? (
         <div className="space-y-2">
           {booking.status === 'PENDING' ? (
@@ -155,7 +158,7 @@ export default function BookingRequestPage() {
             {actions.map((item) => (
               <Button
                 key={item.status}
-                variant={item.status === 'REJECTED' ? 'danger-outline' : 'primary'}
+                variant={item.status === 'REJECTED' || item.status === 'CANCELLED' ? 'danger-outline' : 'primary'}
                 onClick={() => setAction(item)}
               >
                 {item.label}
@@ -163,8 +166,6 @@ export default function BookingRequestPage() {
             ))}
           </div>
         </div>
-      ) : finishedNote ? (
-        <p className="text-sm text-text-muted">{finishedNote}</p>
       ) : null}
 
       <StatusHistoryCard booking={booking} />

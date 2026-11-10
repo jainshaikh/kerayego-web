@@ -9,6 +9,7 @@ import { getCurrencyCode } from '../../../../lib/utils/currency';
 import { formatDurationLabel } from '../../../../lib/utils/rentalDuration';
 import { getVehicleUrl } from '../../../../lib/utils/vehicleUrl';
 import { WhatsAppButton } from '../../../../components/ui';
+import { ConfirmModal } from '../../../../components/ops/ConfirmModal';
 
 const STATUS_META: Record<BookingStatus, { label: string; color: string }> = {
   PENDING: { label: 'Awaiting response', color: 'bg-amber-100 text-amber-700' },
@@ -34,11 +35,15 @@ export default function UserInquiriesPage() {
 
   const handleCancel = async () => {
     if (!cancelId) return;
-    await updateStatus.mutateAsync({
-      id: cancelId,
-      data: { newStatus: 'CANCELLED' },
-    });
-    setCancelId(null);
+    try {
+      await updateStatus.mutateAsync({
+        id: cancelId,
+        data: { newStatus: 'CANCELLED' },
+      });
+      setCancelId(null);
+    } catch {
+      // The hook toasts the failure; the dialog stays open so they can retry.
+    }
   };
 
   return (
@@ -123,32 +128,20 @@ export default function UserInquiriesPage() {
         </div>
       )}
 
-      {/* Cancel confirmation modal */}
-      {cancelId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
-            <h2 className="mb-2 text-lg font-semibold text-slate-900">Cancel inquiry?</h2>
-            <p className="mb-5 text-sm text-slate-500">
-              This will notify the provider. You can always send a new inquiry.
-            </p>
-            <div className="flex justify-center gap-2">
-              <button
-                onClick={() => setCancelId(null)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Keep it
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={updateStatus.isPending}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-60"
-              >
-                {updateStatus.isPending ? 'Cancelling…' : 'Yes, cancel'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Cancel confirmation — shared Modal: top-right × and a click outside close it. */}
+      <ConfirmModal
+        open={cancelId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelId(null);
+        }}
+        title="Cancel inquiry?"
+        description="This will notify the provider. You can always send a new inquiry."
+        cancelLabel="Keep it"
+        confirmLabel="Yes, cancel"
+        destructive
+        loading={updateStatus.isPending}
+        onConfirm={handleCancel}
+      />
     </div>
   );
 }
@@ -168,7 +161,10 @@ function UserInquiryCard({ inquiry, onCancel }: { inquiry: BookingRequest; onCan
       ? formatDurationLabel(inquiry.durationType, inquiry.durationQuantity)
       : null;
   const thumb = inquiry.vehicle.images?.[0]?.url;
-  const canCancel = inquiry.status === 'PENDING' || inquiry.status === 'CONTACTED';
+  // The backend lets the customer cancel only while PENDING (BOOKING_TRANSITIONS:
+  // once the provider has made contact only they or KerayeGo can move it) —
+  // the same rule as mobile's userBookingActions.
+  const canCancel = inquiry.status === 'PENDING';
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5">

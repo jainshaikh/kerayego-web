@@ -30,14 +30,14 @@ export const CITY_PROFILES: Record<string, CityProfile> = {
     region: 'Sindh',
     context: 'Karachi is the biggest city in Pakistan and the capital of Sindh.',
     about: [
-      'It’s a coastal city on the Arabian Sea and the country’s main port, and it covers a huge area. If you have several stops to make in one day, having your own car can be simpler than booking ride after ride.',
+      'It’s a coastal city on the Arabian Sea and the country’s main port, and it covers a huge area. If you have several stops to make in one day, a rented car with its driver can be simpler than booking ride after ride.',
       'Jinnah International Airport is in Karachi, and the M-9 motorway takes you to Hyderabad, around 160 km away. Rules on out-of-city trips are set by each provider, so if you plan to leave Karachi, mention it when you send your request.',
     ],
     faqs: [
       {
         question: 'Can I take a car rented in Karachi to Hyderabad or another city?',
         answer:
-          'That’s up to the provider. Some are happy for you to drive out of Karachi and some aren’t, so tell them your route when you send the booking request, or ask them on WhatsApp first.',
+          'Every car comes with the provider’s own driver, so it’s up to the provider whether they’ll make the trip. Some go outside Karachi and some don’t, so tell them your route when you send the booking request, or ask them on WhatsApp first.',
       },
     ],
     routes: [
@@ -85,9 +85,9 @@ export const CITY_PROFILES: Record<string, CityProfile> = {
           'Every car on this page is in Hyderabad, Sindh, Pakistan. KerayeGo only lists cars in Pakistan at the moment.',
       },
       {
-        question: 'Can I drive a car rented in Hyderabad to Karachi?',
+        question: 'Can I take a car rented in Hyderabad to Karachi?',
         answer:
-          'It depends on the provider. Let them know where you want to go when you send your booking request, or message them on WhatsApp before you book.',
+          'Every car comes with the provider’s own driver, so it depends on whether the provider will make the trip. Let them know where you want to go when you send your booking request, or message them on WhatsApp before you book.',
       },
     ],
     routes: [

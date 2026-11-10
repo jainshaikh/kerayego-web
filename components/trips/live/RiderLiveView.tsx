@@ -16,7 +16,11 @@ interface RiderLiveViewProps {
 }
 
 export function RiderLiveView({ inquiry }: RiderLiveViewProps) {
-  const { stops, driverPosition, routePolyline } = useRiderLiveRoute(inquiry.trip.id, true);
+  const { stops, driverPosition, routePolyline } = useRiderLiveRoute(
+    inquiry.trip.id,
+    inquiry.trip.stops ?? [],
+    true,
+  );
   const { actioningKey, confirmArrived, confirmDropoff } = useRiderTripActions(
     inquiry.trip.id,
     inquiry.id,
