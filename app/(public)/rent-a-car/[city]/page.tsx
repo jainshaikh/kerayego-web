@@ -7,8 +7,10 @@ import {
   fetchDistinctCities,
   fetchPriceIndex,
   fetchAllProviders,
+  fetchWeeklyMonthlyCount,
   type PriceIndexBucket,
 } from '../../../../lib/api/server';
+import { weeklyMonthlyCityUrl } from '../../../../lib/utils/vehicleUrl';
 import { VehicleCard } from '../../../../components/listings/VehicleCard';
 import type { ListingVehicleCard } from '../../../../lib/api/listings.api';
 import { parsePageParam, withPageParam } from '../../../../lib/utils/pagination';
@@ -27,7 +29,7 @@ import { Pagination } from '../../../../components/ui';
 function buildCityFaqs(
   displayName: string,
   pricing: PriceIndexBucket | null,
-  hasLongTermRates: boolean,
+  weeklyMonthlyCount: number,
   cityFaqs: { question: string; answer: string }[],
 ): { question: string; answer: string }[] {
   return [
@@ -42,11 +44,13 @@ function buildCityFaqs(
           },
         ]
       : []),
-    ...(hasLongTermRates
+    // Weeks and months have no set price (plan A79): the customer asks in the
+    // app and the business agrees one. Only said when some car here offers it.
+    ...(weeklyMonthlyCount > 0
       ? [
           {
             question: `Can I rent a car in ${displayName} for a week or a month?`,
-            answer: `Yes. Some providers in ${displayName} show weekly or monthly prices next to the daily rate, so check the listing of the car you like. If you need it for longer than that, message the provider and agree on it with them directly.`,
+            answer: `Yes. ${weeklyMonthlyCount === 1 ? `One car in ${displayName} can` : `${countWord(weeklyMonthlyCount, true)} cars in ${displayName} can`} be rented by the week or the month, always with the provider's driver. There's no set price for a week or a month: you ask for a price in the KerayeGo app, and the business calls you to agree it.`,
           },
         ]
       : []),
@@ -57,7 +61,7 @@ function buildCityFaqs(
     ...cityFaqs,
     {
       question: `How do I rent a car in ${displayName}?`,
-      answer: `Browse the vehicles listed above, open one you like, and send a free booking request directly from the listing. The provider will get in touch to confirm pickup, dates and payment, and will check the documents they need from you, such as your CNIC, before confirming.`,
+      answer: `Browse the vehicles listed above, open one you like, and send a free booking request in the KerayeGo app: choose 6 hours, 12 hours or a number of days, and add your pickup and drop-off points. The provider will get in touch to confirm pickup and payment, and will check the documents they need from you, such as your CNIC, before confirming.`,
     },
     {
       question: 'Do I need to pay online to book?',
@@ -69,7 +73,7 @@ function buildCityFaqs(
     },
     {
       question: 'Can I cancel a booking request?',
-      answer: "Yes — you can cancel a booking request you've sent from your dashboard, as long as it hasn't already been completed.",
+      answer: 'Yes — you can cancel a request in the KerayeGo app until the provider has been in touch about it.',
     },
     {
       question: 'How do I contact the provider?',
@@ -116,7 +120,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       page > 1
         ? `Rent a Car in ${displayName} - Page ${page}`
         : `Rent a Car in ${displayName} — Compare Cars & Prices`,
-    description: `Rent a car in ${displayName}${region ? `, ${region}` : ''} from verified providers. Compare car rental prices and daily or weekly rates, message the owner directly, and book with no hidden fees.`,
+    description: `Rent a car in ${displayName}${region ? `, ${region}` : ''} with a driver from verified providers. Compare daily car rental prices, message the owner directly, and book with no hidden fees.`,
     keywords: [
       `rent a car in ${city}`,
       `rent a car ${displayName}`,
@@ -149,12 +153,14 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
     notFound();
   }
 
-  const [listingsRes, citiesRes, priceIndexRes, providersRes] = await Promise.all([
+  const [listingsRes, citiesRes, priceIndexRes, providersRes, weeklyMonthlyCount] = await Promise.all([
     fetchListings({ city, page: String(page), limit: '24' }),
     fetchDistinctCities(),
     fetchPriceIndex(),
     fetchAllProviders(1, 1, city),
+    fetchWeeklyMonthlyCount(city),
   ]);
+  const weeklyMonthlyHref = weeklyMonthlyCityUrl(city);
 
   const vehicles: ListingVehicleCard[] = listingsRes?.data ?? [];
   const total = listingsRes?.meta?.total ?? 0;
@@ -192,8 +198,6 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
   const topMakeLabels = makesByCount.map(([, { label }]) => label).slice(0, 3);
   const manualCount = vehicles.filter((v) => v.transmission === Transmission.MANUAL).length;
   const autoCount = vehicles.length - manualCount;
-  const weeklyCount = vehicles.filter((v) => v.pricePerWeek).length;
-  const monthlyCount = vehicles.filter((v) => v.pricePerMonth).length;
   const hourlyCount = vehicles.filter((v) => v.pricePer6Hours || v.pricePer12Hours).length;
   const makesPhrase =
     topMakeLabels.length === 1
@@ -203,17 +207,11 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
     total > vehicles.length
       ? `Among the ${countWord(vehicles.length)} cars on this page, ${makesPhrase}.`
       : `${makesPhrase.charAt(0).toUpperCase()}${makesPhrase.slice(1)} here.`;
-  const {
-    transmission: transmissionSentence,
-    hourly: hourlySentence,
-    longTerm: longTermSentence,
-  } = describeRates({
+  const { transmission: transmissionSentence, hourly: hourlySentence } = describeRates({
     total: vehicles.length,
     automatic: autoCount,
     manual: manualCount,
     hourly: hourlyCount,
-    weekly: weeklyCount,
-    monthly: monthlyCount,
   });
 
   const [aboutFirst, ...aboutRest] = profile?.about ?? [];
@@ -228,7 +226,7 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
       ? `On KerayeGo there's one car for rent in ${displayName} right now${providerPhrase}. You can message the owner before you book.`
       : `On KerayeGo you can browse ${countWord(total)} cars for rent in ${displayName}${providerPhrase}, compare their prices side by side, and message the owner before you book.`;
 
-  const cityFaqs = buildCityFaqs(displayName, cityPricing, weeklyCount + monthlyCount > 0, profile?.faqs ?? []);
+  const cityFaqs = buildCityFaqs(displayName, cityPricing, weeklyMonthlyCount, profile?.faqs ?? []);
 
   const faqJsonLd = {
     '@context': 'https://schema.org',
@@ -288,8 +286,8 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
         {total > 0 ? (
           <p className="mt-2 max-w-2xl text-sm text-text-muted">
             Looking for a car for rent in {displayName}? Browse cars with drivers from verified
-            local providers, compare real daily and weekly rates, and send a free inquiry — no
-            payment until you&rsquo;re ready to book.
+            local providers, compare real 6-hour, 12-hour and daily prices, and send a free booking
+            request in the KerayeGo app — nothing is paid online.
             {` ${total.toLocaleString()} vehicle${total === 1 ? '' : 's'} currently available.`}
           </p>
         ) : (
@@ -299,7 +297,7 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
           </p>
         )}
 
-        {(cityPricing || providerCount > 0) && (
+        {(cityPricing || providerCount > 0 || weeklyMonthlyCount > 0) && (
           <div className="mt-4 flex flex-wrap gap-2.5 text-xs">
             {cityPricing && (
               <span className="inline-flex items-center rounded-control border border-border-subtle bg-surface px-3 py-1.5 font-medium text-ink">
@@ -313,6 +311,16 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
                 className="inline-flex items-center gap-1 rounded-control border border-border-subtle bg-surface px-3 py-1.5 font-medium text-ink transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
               >
                 {providerCount} verified provider{providerCount === 1 ? '' : 's'} in {displayName}
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            )}
+            {/* The city's weekly & monthly page (plan A84) — no prices, asked in the app. */}
+            {weeklyMonthlyCount > 0 && (
+              <Link
+                href={weeklyMonthlyHref}
+                className="inline-flex items-center gap-1 rounded-control border border-border-subtle bg-surface px-3 py-1.5 font-medium text-ink transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+              >
+                Weekly &amp; monthly rental in {displayName}
                 <ChevronRight className="h-3 w-3" />
               </Link>
             )}
@@ -414,19 +422,26 @@ export default async function CityCarRentalPage({ params, searchParams }: PagePr
               <p>
                 {makesSentence} {transmissionSentence}
                 {hourlySentence && ` ${hourlySentence}`}
-                {longTermSentence && (
-                  <>
-                    {' '}
-                    {longTermSentence} Our guide to{' '}
-                    <Link
-                      href="/guides/monthly-vs-daily-car-rental"
-                      className="font-semibold text-brand-700 hover:underline"
-                    >
-                      monthly vs daily car rental
-                    </Link>{' '}
-                    shows how to compare the two.
-                  </>
-                )}
+              </p>
+            )}
+            {weeklyMonthlyCount > 0 && (
+              <p>
+                Need a car for a week or a month?{' '}
+                {weeklyMonthlyCount === 1
+                  ? 'One car here can be rented that way'
+                  : `${countWord(weeklyMonthlyCount, true)} cars here can be rented that way`}
+                , with the provider&rsquo;s driver and a price you agree with the business. See{' '}
+                <Link href={weeklyMonthlyHref} className="font-semibold text-brand-700 hover:underline">
+                  weekly &amp; monthly car rental in {displayName}
+                </Link>
+                , and our guide to{' '}
+                <Link
+                  href="/guides/monthly-vs-daily-car-rental"
+                  className="font-semibold text-brand-700 hover:underline"
+                >
+                  monthly vs daily car rental
+                </Link>
+                .
               </p>
             )}
             {(sameRegionCities.length > 0 || (profile?.routes?.length ?? 0) > 0) && (

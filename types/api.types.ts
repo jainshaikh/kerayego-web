@@ -242,8 +242,8 @@ export interface ProviderVehicle {
   pricePer6Hours: string | null;
   pricePer12Hours: string | null;
   pricePerDay: string;
-  pricePerWeek: string | null;
-  pricePerMonth: string | null;
+  /** Weekly & monthly rental, "price to agree" (plan A79/A84) — replaced the week and month prices on 2026-11-11. */
+  offersWeeklyMonthly?: boolean;
   locationText: string | null;
   availabilityNotes: string | null;
   pricingNotes: string | null;
@@ -270,8 +270,8 @@ export interface VehicleCard {
   pricePer6Hours: string | null;
   pricePer12Hours: string | null;
   pricePerDay: string;
-  pricePerWeek: string | null;
-  pricePerMonth: string | null;
+  /** Weekly & monthly rental, "price to agree" (plan A79/A84) — replaced the week and month prices on 2026-11-11. */
+  offersWeeklyMonthly?: boolean;
   transmission: Transmission;
   fuelType: FuelType;
   seatingCapacity: number;

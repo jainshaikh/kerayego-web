@@ -12,8 +12,10 @@ import {
   Notice,
   SectionCard,
 } from '../../../../../components/ops/bookings/BookingBits';
+import { CarClashWarning } from '../../../../../components/ops/bookings/CarClashWarning';
 import { CustomerContactCard } from '../../../../../components/ops/bookings/CustomerContactCard';
 import { DriverCard } from '../../../../../components/ops/bookings/DriverCard';
+import { RouteCard } from '../../../../../components/ops/bookings/RouteCard';
 import { StatusActionModal } from '../../../../../components/ops/bookings/StatusActionModal';
 import { StatusHistoryCard } from '../../../../../components/ops/bookings/StatusHistoryCard';
 import { RateBookingCustomerCard } from '../../../../../components/ops/ratings/RateBookingCustomerCard';
@@ -32,6 +34,14 @@ import {
   totalPriceLabel,
   type BusinessBookingAction,
 } from '../../../../../lib/ops/bookingDisplay';
+import {
+  bookingPlaceRows,
+  clashesToWarnAbout,
+  isPriceToAgree,
+  longRentalRows,
+  passengersLabel,
+} from '../../../../../lib/ops/bookingRoute';
+import { BOOKING_TRIP_TYPE_LABELS } from '../../../../../types/booking-requests.types';
 import { getVehicleUrl } from '../../../../../lib/utils/vehicleUrl';
 
 // One booking request (/provider/inquiries/[id] — business admin and manager,
@@ -83,6 +93,10 @@ export default function BookingRequestPage() {
   const actions = businessBookingActions(booking.status);
   const duration = durationLabel(booking.durationType, booking.durationQuantity);
   const total = totalPriceLabel(booking);
+  const priceToAgree = isPriceToAgree(booking);
+  const passengers = passengersLabel(booking.passengerCount);
+  const hasStops = (booking.stops?.length ?? 0) > 0;
+  const clashes = clashesToWarnAbout(booking);
   const finishedNote = finishedStatusNote(booking.status);
   const jobState = jobStateText(booking);
 
@@ -106,6 +120,9 @@ export default function BookingRequestPage() {
         </div>
       </Card>
 
+      {/* The car is already booked at this time — Accept would be refused (A88). */}
+      <CarClashWarning clashes={clashes} />
+
       {can('rateCustomers') ? <RateBookingCustomerCard bookingId={booking.id} status={booking.status} /> : null}
 
       {/* Up top, so "Needs a driver" is the first thing seen. */}
@@ -127,17 +144,23 @@ export default function BookingRequestPage() {
           <DetailRow label="Pickup" value={formatDateTime(booking.requestedFromDate)} />
           <DetailRow label="Return" value={formatDateTime(booking.requestedToDate)} />
           {duration ? <DetailRow label="Duration" value={duration} /> : null}
-          <DetailRow label="Pickup location" value={booking.pickupLocation?.trim() || 'Not given'} />
-          {booking.isOneWay ? (
-            <DetailRow
-              label="Drop-off (one way)"
-              value={[booking.dropoffLocation?.trim(), booking.dropoffCity?.trim()].filter(Boolean).join(', ') || 'Not given'}
-            />
-          ) : null}
+          {booking.tripType ? <DetailRow label="Trip" value={BOOKING_TRIP_TYPE_LABELS[booking.tripType]} /> : null}
+          {passengers ? <DetailRow label="Passengers" value={passengers} /> : null}
+          {/* With stops, the places are in the Route section. */}
+          {hasStops
+            ? null
+            : bookingPlaceRows(booking).map((row) => <DetailRow key={row.label} label={row.label} value={row.value} />)}
+          {/* A weekly or monthly request's working pattern (A85). */}
+          {longRentalRows(booking).map((row) => (
+            <DetailRow key={row.label} label={row.label} value={row.value} />
+          ))}
           {total ? <DetailRow label="Estimated total" value={total} /> : null}
+          {priceToAgree ? <DetailRow label="Price" value="To agree — call the customer" /> : null}
           <DetailRow label="Car’s day rate" value={dayRateLabel(booking)} />
         </div>
       </SectionCard>
+
+      <RouteCard booking={booking} />
 
       <CustomerContactCard customer={booking.user} market={booking.vehicle.showroom?.country} />
 
@@ -172,6 +195,7 @@ export default function BookingRequestPage() {
 
       <StatusActionModal
         booking={booking}
+        carClashes={clashes}
         action={action}
         onClose={() => setAction(null)}
         onInviteDriver={

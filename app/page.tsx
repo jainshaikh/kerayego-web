@@ -43,7 +43,7 @@ const TRUST_SIGNALS = [
   {
     Icon: Tag,
     title: 'Transparent pricing',
-    sub: 'Real daily and weekly rates. No hidden fees at handover.',
+    sub: 'Real prices for 6 hours, 12 hours and days. No hidden fees at handover.',
   },
   {
     Icon: Zap,
@@ -119,7 +119,7 @@ export default async function HomePage() {
             </h1>
 
             <p className="mb-9 max-w-xl text-[17px] leading-relaxed text-white/60">
-              Compare vehicles from verified providers, see real daily and weekly rates, and message
+              Compare vehicles from verified providers, see real daily prices, and message
               the owner directly. No hidden fees, no payment until it&rsquo;s confirmed.
             </p>
 

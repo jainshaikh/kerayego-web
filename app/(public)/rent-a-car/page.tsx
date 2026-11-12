@@ -152,7 +152,7 @@ export default async function RentACarPage({ searchParams }: PageProps) {
             </div>
             <p>
               Every car comes with the provider&rsquo;s own driver; KerayeGo doesn&rsquo;t offer
-              self-drive. Booking is free: send a request from the car&rsquo;s listing and the
+              self-drive. Booking is free: send a request in the KerayeGo app and the
               provider gets in touch to confirm pickup, dates and payment with you directly, after
               checking the documents they need, such as your CNIC. Nothing is paid online.
               New to it? Read{' '}

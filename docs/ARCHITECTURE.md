@@ -15,31 +15,35 @@ copying old numbers.
 
 ---
 
-## 0. Current state (2026-11-10)
+## 0. Current state (2026-11-12)
 
 | | |
 |---|---|
 | Framework | Next.js **14.2.35** installed (`package.json` says `^14.2.5`), App Router, React 18.3.1, TypeScript strict |
 | Hosting | **Vercel**, production at `https://www.kerayego.com` — evidence: the `rentalmarket.vercel.app` → `www.kerayego.com` 301 in `next.config.mjs:62-67`, `.vercel` in `.gitignore`, the backend comment at `kerayego-backend/src/modules/auth/auth.controller.ts:25`. No Dockerfile; build settings live in Vercel, not in this repo. |
 | Backend | `NEXT_PUBLIC_API_URL` (default `http://localhost:3001/v1`) — REST + the `/ride` Socket.IO namespace |
-| Size | **90 pages** — `(auth)` 4, `(dashboard)` 13, `(provider)` 22, `(driver)` 4, `(admin)` 18, `(public)` 28, homepage 1 — plus 2 route handlers; 26 hook files, 21 `lib/api` files, 146 component files, 12 Zod schema files |
-| Checks | `npx tsc --noEmit` → 0 errors; `npm run lint` → clean (both 2026-11-10). **No test suite** (§31). |
+| Size | **91 pages** — `(auth)` 4, `(dashboard)` 13, `(provider)` 22, `(driver)` 4, `(admin)` 18, `(public)` 29, homepage 1 — plus 2 route handlers; 26 hook files, 21 `lib/api` files, 150 component files, 11 Zod schema files |
+| Checks | `npx tsc --noEmit` → 0 errors; `npm run lint` → clean (both 2026-11-12). **No test suite** (§31). |
 | Env switches | Google Analytics loads only with `NEXT_PUBLIC_GA_ID`; app-store buttons stay hidden until `NEXT_PUBLIC_APP_STORE_URL`/`NEXT_PUBLIC_PLAY_STORE_URL` is set; maps need `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` |
-| Git | `CLAUDE.md` and `docs/` are untracked in this repo (not committed yet) |
 
 **Open items** (full list with references in §32):
 
-- **Fixed 2026-11-10, not yet deployed** (changelog §33): customer dashboard counters, plan A71 in the
-  business inbox, the sign-in open redirect, the uncached-vehicle-page cache, the rider live map's
-  missing stops, customer cancel on a CONTACTED request, self-drive wording in two city FAQs.
+- **Rental booking redesign built on the web 2026-11-12 (plan §3c/§3d, A74–A88) — waits for the
+  backend.** The customer booking form is off (A82: the car page sends customers to the app); the
+  business portal and driver jobs show the route, passengers, "price to agree" and the double-booking
+  warning like the Partner app; the fleet form has the weekly & monthly switch; public pages show no week
+  or month prices, show "This exact car" with the car's rating; each city has a weekly & monthly page.
+  The backend changes it reads (2026-11-11) are **not on production yet** — every new field is optional,
+  so until they are, the web runs on the old backend: weekly & monthly pages 404 and their links stay
+  hidden, ratings come from `/reviews/summary`, requests show no route.
 - **Waiting on the backend:** it still lets a `PROVIDER` move a booking to IN_PROGRESS/COMPLETED through
   `PATCH /booking-requests/:id/status` (the web no longer offers it, plan A71); "Remind driver" has no
-  endpoint yet.
+  endpoint yet; "Plate checked by KerayeGo" (A87) needs the listing to say so.
 - **Still-open bugs worth doing next:** backend error messages are lost in several carpool/review/chat
   paths; chat history shows only the oldest 50 messages; the rider live view's arrived/no-show state is
   lost on reload; the phone gate can't show in a fresh tab (§32.1).
-- **Partner-app parity gaps:** manager-only invitees can't reach their invitation on the web; driver jobs
-  have no pickup/drop-off "Map" directions; job-answer rules differ (§21.8).
+- **Partner-app parity gaps:** manager-only invitees can't reach their invitation on the web; job-answer
+  rules differ (§21.8).
 
 ---
 
@@ -55,7 +59,7 @@ What the web does:
 |---|---|---|
 | Public browsing + SEO (rental listings, providers, carpool routes, guides, price index) | `(public)`, `app/page.tsx` | §23 |
 | Sign-in / sign-up (phone + WhatsApp code; email code as backup), phone verification, account deletion | `(auth)`, `components/auth`, `components/account` | §6, §7 |
-| Customer dashboard (rental requests, carpool trips/requests, personal vehicles, reviews, settings) | `(dashboard)` | §11–§16 |
+| Customer dashboard (own rental requests — sent in the app since A82 —, carpool trips/requests, personal vehicles, reviews, settings) | `(dashboard)` | §11–§16 |
 | **Carpool day-of layer** — driver cockpit, rider live view, live location over Socket.IO, chat | `components/trips/live`, `lib/realtime` | §14 |
 | **Business portal** for business admin, managers and drivers (plan A69) | `(provider)`, `(driver)` | §17–§21 |
 | KerayeGo admin console | `(admin)` | §22 |
@@ -98,29 +102,32 @@ kerayego-web/
     workspace/             PortalFrame, SidebarLinks, WorkspaceScreens, WorkspaceSwitcher             §17.2
     provider/              ProviderPortal, ProviderSidebar
     business/              profile/*, documents/*, team/*                                             §17
-    ops/                   ConfirmModal, bookings/*, fleet/*, live-map/*, ratings/*                   §18–§20
-    driver/                DriverPortal, DriverSidebar, setup/* steps, modals                         §21
+    ops/                   ConfirmModal, bookings/* (incl. RouteCard, CarClashWarning), fleet/*,
+                           live-map/*, ratings/*                                                      §18–§20
+    driver/                DriverPortal, DriverSidebar, setup/* steps, JobPlaces, modals              §21
     admin/                 shared admin table/header/badges/dialogs, BusinessActivityCard, DriverPhoto,
                            PersonBlockParts; AdminSidebar.tsx is an empty `export {}` stub            §22
     trips/                 carpool forms/lists/inbox/cards; live/* = cockpit, rider view, chat, map   §13–§14
     user-vehicles/         personal-vehicle wizard, list, detail                                      §15
     reviews/               EligibleReviewsList                                                        §16
-    home/, listings/, vehicles/, providers/, maps/, analytics/                                         §23–§24
+    home/, listings/ (incl. CarRatingLine), vehicles/ (incl. AppRequestCta), providers/, maps/,
+    analytics/                                                                                         §23–§24
     uploads/               ImageUpload, DocumentUpload — both DEAD (zero importers)                  §25
   hooks/                   26 files, mostly React Query wrappers per domain                           §10
   lib/
     api/                   client.ts (axios), server.ts (SSR fetch), 19 *.api.ts                      §9
     realtime/ride-socket.ts  Socket.IO singleton for /ride                                            §14.1
     workspace/             workspaceSelection (permission table), workspaceRoutes, businessStatus     §17.1
-    ops/                   bookings/fleet/photo/live-map/rating rules (Partner-app ports)             §18–§20
-    driver/                driver setup steps, verification, jobs, working hours, errors              §21
+    ops/                   bookings (bookingDisplay, bookingRoute), fleet/photo/live-map/rating rules
+                           (Partner-app ports)                                                        §18–§20
+    driver/                driver setup steps, verification, jobs, jobPlaces, working hours, errors   §21
     business/, documents/, team/, activity/    business-portal helpers                                §17
     config/                markets (backend mirror), cityProfiles, apps (store links)                 §23.7
     providers/             query-provider, auth-bootstrap
     utils/                 cn, auth-cookies, analytics, copy, currency, datetime, geo-distance,
                            geolocation, pagination, phone, rentalDuration, safeRedirect, userLocation,
                            vehicleUrl
-    validations/           12 Zod schema files                                                        §27
+    validations/           11 Zod schema files                                                        §27
   store/                   auth (persisted), phone-gate, workspace, ui (dead)                         §8
   types/                   enums.ts, api.types.ts + booking-requests, driver, fleet, live-map, team,
                            workspace types                                                            §28
@@ -463,6 +470,7 @@ mean "no cache": with no `cache` option Next 14 then auto-caches with no expiry.
 | `fetchTrips` / `fetchTripById` | `/trips`, `/trips/:id` | 30 / 30 |
 | `fetchTripMetaCities` / `fetchTripRouteGroups` | `/trips/meta/cities` / `routes` | 300 / 60 |
 | `fetchRatingSummary` | `/reviews/summary` | 300 |
+| `fetchWeeklyMonthlyListings` / `fetchWeeklyMonthlyCount` | `/listings?city&weeklyMonthly=true` (plan A84) | 60 — null / 0 when the backend rejects the filter (before 2026-11-11) or a car without `offersWeeklyMonthly` comes back |
 
 `revalidateTag`/`revalidatePath` are never called, so the tags do nothing. **`fetchVehicleBySlug` is
 never cached** (`cache: 'no-store'`): each render increments the view counter, and price, status and
@@ -495,8 +503,12 @@ React de-duplicates, so a view is one request. (Until 2026-11-10 it passed `reva
 - **driver**: `GET|PATCH /driver/profile`, `POST /driver/profile/agreements`, `POST /driver/profile/submit`,
   `GET /driver/businesses`, `POST /driver/businesses/:id/accept|leave`, `GET /driver/jobs`,
   `POST /driver/jobs/:id/respond`, `GET /driver/jobs/:id/return-trip-template`, `POST /trips` (return trip).
-- **customer rental**: `POST|GET /booking-requests`, `GET /booking-requests/counts`,
-  `PATCH /booking-requests/:id/status` (`getOne`, `getLiveDriver`, `getLiveRoute` unused).
+- **customer rental**: `GET /booking-requests`, `GET /booking-requests/counts`,
+  `PATCH /booking-requests/:id/status` (`getOne`, `getLiveDriver`, `getLiveRoute` unused). No
+  `POST /booking-requests` since 2026-11-12 — requests are sent in the app (A82); the web never calls
+  `POST /booking-requests/estimate`.
+- **listings**: also `GET /listings?weeklyMonthly=true` (the weekly & monthly pages); cards and the detail
+  carry `carRating` and `offersWeeklyMonthly`, no week/month prices (A79, A87).
 - **carpool**: `GET /trips`, `/trips/:id`, `POST /trips`; `GET /my/trips[/:id]`,
   `PATCH /my/trips/:id/cancel`, `POST /my/trips/:id/start|events|end`, `GET /my/trips/:id/manifest`,
   `GET /my/active-ride`; `POST|GET /trip-inquiries`, `GET /trip-inquiries/:id`,
@@ -529,7 +541,7 @@ React de-duplicates, so a view is one request. (Until 2026-11-10 it passed `reva
 | `useDriverProfile` | `['driver','profile']`; step save, submit, agreements, uploads, open document |
 | `useDriverJobs` | `['driver','jobs']`; respond; `['reviews','my','eligible']`; rate customer; `['driver','return-trip-template',id]`; create return trip |
 | `useDriverBusinesses` | `['driver','businesses']`; accept, leave |
-| `useBookings` | `['bookings','my',page,limit]`, `['bookings','counts']` (60 s), `useBooking` (no callers); create (GA `complete_booking`), update status |
+| `useBookings` | `['bookings','my',page,limit]`, `['bookings','counts']` (60 s), `useBooking` (no callers); update status (no create since A82) |
 | `useTrips` | `['trips','my',params]`, `['trips','my','detail',id]`, `['trips','my','manifest',id]` (20 s), `['trips','active-ride']` (20 s); create (GA `offer_ride`), cancel, start, record event, end |
 | `useTripInquiries` | `['trip-inquiries','my',page,limit]`, `['trip-inquiries',id]` (15 s only while IN_PROGRESS), `['trip-inquiry-inbox',params]` (30 s); create (GA `join_ride`), update status (invalidates `trip-inquiries`, `trip-inquiry-inbox`, `trips`, `trip`) |
 | `useUserVehicles` | `['user-vehicles','my']`, `…,'approved'`, `…,'detail',id`; create, delete |
@@ -566,23 +578,30 @@ Routes: `/dashboard` (overview), `/dashboard/inquiries` (own rental requests, §
 
 ## 12. Rental booking flow (customer side)
 
-Public browse (`/rent-a-car` + city/make-model pages, §23) → vehicle detail → `InquiryCta` (signed-out
-visitors get a modal offering sign-in/register/WhatsApp) → `/rent-a-car/[city]/[makeModel]/[slug]/inquire`
-(client page, layout noindex) → `POST /booking-requests {vehicleId, requestedFromDate, durationType,
-durationQuantity, pickupLocation?, message?}`. A 409 means a request is already active (with a link).
-Duration buttons come from `getAvailableDurations(vehicle)`; the date input's `min` is local time;
-`createBookingSchema` itself checks neither a future date nor an offered duration. GA `begin_booking` on
-the page, `complete_booking` on success.
+**The website takes no rental booking requests** (owner decision 2026-11-11, plan A82; switched off
+2026-11-12). The car page's call to action (`components/vehicles/AppRequestCta.tsx`) says to send the
+request in the KerayeGo app — where the customer picks the package, the pickup and drop-off points and
+sees whether the route fits (plan §3c) — with the store buttons once a store URL is set ("coming soon to
+Google Play and the App Store" until then) and the provider's WhatsApp for questions. The old form URL,
+`/rent-a-car/[city]/[makeModel]/[slug]/inquire`, permanently redirects to the car page. Removed with it:
+`InquiryCta`, `useCreateBooking`, `bookingsApi.create`, `lib/validations/booking.schema.ts`, and the GA
+events `begin_booking` / `complete_booking`. Carpool seat requests and customer sign-in stay for now.
 
-`/dashboard/inquiries` ("My Inquiries", `useMyBookings`): paginated list with every status's label, the
+`/dashboard/inquiries` ("My Inquiries", `useMyBookings`) still lists the customer's requests (sent from
+the app): every status's label, the package as people say it ("12 hours", "3 days", "1 week" — old
+requests "6 hours × 2"), the estimated total or "Price to agree — the business will call you" (a week or
+month request, A79), where it goes ("Hyderabad → Larkana, round trip · 3 stops · 620 km"), passengers, a
+folded "Route" list of the stops with expected times and notes (plan §3c), and — once a driver is
+assigned and the booking is ACCEPTED, IN_PROGRESS or COMPLETED — the **driver card** (plan A86: photo,
+name, rating, rides, "✓ Identity verified" / "✓ Licence verified", never "safe"; Call / WhatsApp when the
+backend sends the phone, otherwise "You can call your driver once they confirm the job"). Also the
 provider's WhatsApp and note, a NOT_STARTED explainer and the last status-history entry. **Cancel** is
 offered **only while PENDING** — the backend's rule (`BOOKING_TRANSITIONS`: from CONTACTED on, only the
 provider or KerayeGo can move it) and mobile's `userBookingActions`. It confirms in `ConfirmModal` (× and
 tap-outside close) → `PATCH status CANCELLED`; a failure is toasted and the dialog stays open. (Until
 2026-11-10 it was also offered while CONTACTED, where the backend always refused.)
 
-A `PROVIDER` account has no page for rental requests it sent itself: `inquiries` isn't a shared section,
-yet the inquire success page links to `/dashboard/inquiries`.
+A `PROVIDER` account has no page for rental requests it sent itself: `inquiries` isn't a shared section.
 
 Status transitions on the business side: §19.
 
@@ -904,12 +923,18 @@ The same rating card appears on the booking detail page for COMPLETED bookings.
   - Basic: title 3–100, plate optional 2–20 (uppercase by CSS only), make 2–50, model 1–50, year
     1990…now+2, seats 1–20, engine ≤ 60, transmission AUTOMATIC/MANUAL/CVT, fuel
     PETROL/DIESEL/ELECTRIC/HYBRID/CNG.
-  - Pricing (PKR): daily price required; 6 h, 12 h, week, month optional (empty = not offered); each
-    `^\d{1,8}(\.\d{1,2})?$` and ≥ 1; pricing notes ≤ 500.
+  - Pricing (PKR): daily price required; 6 h and 12 h optional (empty = not offered); each
+    `^\d{1,8}(\.\d{1,2})?$` and ≥ 1; pricing notes ≤ 500. **No week or month prices** (plan A79): a
+    **"Weekly & monthly rental" switch** (`offersWeeklyMonthly`, A84) puts the car on the weekly & monthly
+    pages, "price to agree". A backend from before 2026-11-11 doesn't send the switch — then an old week or
+    month price stands for it (`offersWeeklyMonthly()` in `lib/ops/vehicleForm.ts`, as in Partner). The
+    read-only specs card (archived/suspended) says "Weekly & monthly rental: Yes, price to agree / Not
+    offered".
   - Location & details: showroom (a Select when there are several), availability notes ≤ 500, special
     conditions ≤ 1000. Features: chips from 16 `COMMON_FEATURES` (no free text).
   - Create omits empty optionals; edit sends an emptied optional as `null` and omits a locked plate.
-  - `lib/validations/vehicle.schema.ts`'s `vehicleSchema` is dead; only its option constants are used.
+  - `lib/validations/vehicle.schema.ts` now holds only the option constants (its dead `vehicleSchema`,
+    with week/month prices, was removed 2026-11-12).
 - **Plate lock** (plan A65): APPROVED with a plate → read-only, "contact KerayeGo support" (admin corrects
   it, §22.5); `PlateHistoryCard` when the API returns `plateHistory`.
 - **Photos**: JPEG/PNG/WebP, original ≤ 40 MB, ≤ 5 MB after in-browser compression
@@ -942,8 +967,13 @@ The same rating card appears on the booking detail page for COMPLETED bookings.
 
 - **List** ("Bookings"): chips All, Needs a driver, New, Contacted, Accepted, In Progress, Completed, Not
   started, Rejected, Cancelled; counts on Needs a driver / New / Contacted (`GET /provider/inquiries/counts`);
-  `?status=`, `?needsDriver=true`, `?page=` in the URL; 20 per page. Cards: car, status, customer, dates,
-  duration, estimated total, "Needs a driver".
+  `?status=`, `?needsDriver=true`, `?page=` in the URL; 20 per page. Cards (same as Partner): car, status,
+  customer, where it goes ("Hyderabad → Larkana, round trip · 3 stops · 620 km", `bookingPlaceSummary`),
+  dates, package · passengers · estimated total or "Price to agree", "Needs a driver".
+- **Wording and route** (plan §3c, A74–A88; `lib/ops/bookingRoute.ts`, a port of Partner's
+  `bookingRoute.ts`): the package as people say it — "6 hours", "12 hours", "3 days", "1 week" (old
+  requests "6 hours × 2"; `durationLabel`); "One way" / "Round trip"; passengers (A83). Requests sent
+  before 2026-11-11 have no stops and keep their single pickup / drop-off rows.
 - **Actions** (`BUSINESS_BOOKING_ACTIONS`, `lib/ops/bookingDisplay.ts`, a copy of the Partner app's
   table in `kerayego-partner/src/types/enums.ts` — change both together; business admin and manager get
   the same buttons). Plan A71 (2026-11-09; web since 2026-11-10): **only the assigned driver starts and
@@ -966,10 +996,18 @@ The same rating card appears on the booking detail page for COMPLETED bookings.
   drivers greyed with the backend's reasons, verification badge, licence expiry, Refresh; "Invite a driver"
   → `/provider/team`; `PATCH /booking-requests/:id/driver {assignedDriverId | null}`. A driver who declined
   counts as no driver. Errors inline, no success toast.
-- **Detail** (`/provider/inquiries/[id]`): car (link to the public page), driver card, job-state text,
-  rental (pickup, return, duration, pickup location, "Drop-off (one way)" when `isOneWay`, estimated total,
-  day rate), customer card (Call, WhatsApp — a local `0…` number gets the market's code — Email), message,
-  status history (newest first).
+- **Detail** (`/provider/inquiries/[id]`): car (link to the public page); **"This car is already
+  booked"** (`CarClashWarning`, plan A88) on a PENDING / CONTACTED request whose car has an overlapping
+  accepted or in-progress booking (`carClashes`, each linked) — also inside the Accept dialog, and a 409
+  `VEHICLE_ALREADY_BOOKED` shows the backend's words plus "Decline this request, or ask the customer about
+  another time"; driver card; job-state text; Rental (pickup, return, duration, trip, passengers, the
+  single pickup / drop-off rows only on a request without stops, a weekly/monthly request's driver hours a
+  day / days a week / km a month (A85), estimated total or "Price: To agree — call the customer" (A79), day
+  rate); **Route** (`RouteCard`, A78: every stop in route order with its expected time, note and the leg
+  from the stop before, then distance, driving, time needed, time to spare or over the package, way back,
+  showroom → first pickup and a one-way driver's drive back, with the "Google's estimates without
+  traffic" footnote — places only, never anyone's position); customer card (Call, WhatsApp — a local `0…`
+  number gets the market's code — Email), message, status history (newest first).
 
 ---
 
@@ -1065,7 +1103,13 @@ backend also matches invites by verified phone, so the note is misleading (§32.
 
 Blue note: start and end jobs in the KerayeGo Partner app; location is shared with the business only from
 the app while a job is in progress. Cards: car, business, status, answer badge (when the driver hasn't
-accepted), customer name/phone, dates, pickup location, one-way route. Actions: **Accept job / Decline**
+accepted), customer name/phone, car, dates, then the job's route (`components/driver/JobPlaces.tsx` +
+`lib/driver/jobPlaces.ts`, ports of Partner's, plan §3c/A72): "12 hours · Round trip · 3 passengers · 620
+km · 9 h 20 min", every stop in route order with its expected time and note, a **Map** link per stop
+(Google Maps directions by coordinates, or by the place text on an older job) and **Directions for the
+whole route** (all stops, a round trip back through the pickups; not offered past Google's 9 waypoints) —
+links only while the job is ACCEPTED or IN_PROGRESS; plain Google Maps URLs, no Maps JavaScript. Actions:
+**Accept job / Decline**
 (`POST /driver/jobs/:id/respond`; an identity-hold refusal shows the hold message), **Rate customer**
 (completed jobs, `RateCustomerModal`: 1–5 stars, comment ≤ 1000, private), **Post return trip**. No
 Start/End, "Picked up" or location controls (plan A71/A72); no customer location anywhere. Jobs don't poll.
@@ -1083,7 +1127,6 @@ review step). A port of the Partner sheet. The button stays visible after postin
 
 - A person invited only as a **manager** (no Driver dashboard) gets `NotADriverScreen` and can't reach
   `/driver/businesses` to accept — the Partner app shows manager invitations on its welcome screen.
-- Jobs have no pickup/drop-off **"Map"** directions (Partner `JobPlaces`, plan A72).
 - Answer rules: Partner lets a driver answer only while ACCEPTED and shows the answer badge only then; the
   web allows any unfinished status and shows "Reply needed" on finished jobs.
 - Plan A69's reason "a manager sometimes completes a driver's profile" isn't supported — the wizard only
@@ -1126,7 +1169,8 @@ owner (incl. CNIC), showrooms, document previews.
 ### 22.4 Vehicles (rental fleet)
 
 Tabs All / Pending Review / Approved / Rejected / Draft / Archived (no Suspended); search. PENDING_REVIEW →
-Approve + Reject; DRAFT/REJECTED → Approve only. Detail adds **Correct plate** (plan A65) for every status
+Approve + Reject; DRAFT/REJECTED → Approve only. The detail shows 6 h / 12 h prices and "Weekly & monthly:
+Offered, price to agree / Not offered" (no week or month prices since 2026-11-11, A79). Detail adds **Correct plate** (plan A65) for every status
 (uppercase, ≤ 20, ≥ 2 chars + reason) → `PATCH /admin/vehicles/:id/plate`. **No suspend/reactivate UI**
 although the backend has `PATCH /admin/vehicles/:id/suspend|reactivate`.
 
@@ -1220,7 +1264,8 @@ cities, listings count, providers count. Sections: hero ("Find your perfect rent
 `/rent-a-car?search&city`, "Browse all vehicles", "List your fleet" → `/register?role=PROVIDER`,
 `HeroStats`, `HeroCollage` from the first 3 featured photos), 4 trust signals, featured grid, "Browse by
 city" (10), provider CTA. Footer: Logo, ©, Browse, Providers, Carpool, Price Index, About, FAQ, Guides,
-Safety, Contact, Privacy, Terms, Delete account, Sign in, app links. **No carpool section** (carpool is the
+Safety, Contact, Privacy, Terms, Delete account, Sign in, app links. Copy says "real prices for 6 hours,
+12 hours and days" — never week/month prices (A79). **No carpool section** (carpool is the
 owner's top priority — §32.3). `HeroCollage` always shows "Reply in ~14 min" (a hardcoded default).
 
 ### 23.2 Rental pages
@@ -1228,10 +1273,11 @@ owner's top priority — §32.3). `HeroCollage` always shows "Reply in ~14 min" 
 | Route | Behaviour |
 |---|---|
 | `/rent-a-car` | `fetchListings` (cookie location, 8 km), makes, cities, price index → `<VehiclesView>` (filters in the URL). Page-1 SEO copy (median price, city links, "no self-drive" line). Canonical keeps only `page`. |
-| `/rent-a-car/[city]` | `generateStaticParams` from distinct cities; indexed only when it has listings; a city with no listings renders (noindexed) if it has a `CITY_PROFILES` entry, else 404; 24 per page; Breadcrumb + FAQPage JSON-LD (city FAQs + profile FAQs). |
-| `/rent-a-car/[city]/[makeModel]` | `splitMakeModel` (longest known make prefix); 404 on zero results (no doorway pages); Breadcrumb + FAQPage (page 1). |
-| `/rent-a-car/[city]/[makeModel]/[slug]` | Vehicle detail (`fetchVehicleBySlug`, §9.2); canonical from `getVehicleUrl`; Product (LeaseOut Offer, InStock/OutOfStock, aggregateRating when rated) + Breadcrumb JSON-LD; gallery, save, ratings, a hardcoded "Verified provider" line, price card, `InquiryCta`, "Comes with the provider's driver · No self-drive"; GA `view_vehicle`. A booked car still resolves, marked BOOKED with `bookedUntil` (formatted in the server's time zone). |
-| `…/[slug]/inquire` | §12 |
+| `/rent-a-car/[city]` | `generateStaticParams` from distinct cities; indexed only when it has listings; a city with no listings renders (noindexed) if it has a `CITY_PROFILES` entry, else 404; 24 per page; Breadcrumb + FAQPage JSON-LD (city FAQs + profile FAQs). When the city has weekly & monthly cars (`fetchWeeklyMonthlyCount`): a header chip, a paragraph and an FAQ answer link to its weekly & monthly page (no prices). FAQ answers say requests are sent and cancelled in the KerayeGo app. |
+| `/rent-a-car/[city]/weekly-monthly` | **Weekly & monthly page per city** (plan A84, 2026-11-12): the cars switched on for it (`fetchWeeklyMonthlyListings` → `GET /listings?city=…&weeklyMonthly=true`), cards with "Price to agree" instead of the day price, no price anywhere, "How to ask for a weekly or monthly price" (in the app: week 1–4 / month 1–12, start, places, passengers, driver hours a day, days a week, km a month — A85), FAQ (+ FAQPage JSON-LD on page 1), Breadcrumb, links to the city hub, the monthly-vs-daily guide and the city's carpool. A static segment, resolved before `[makeModel]`. **404 when the city has none** — and on a backend from before 2026-11-11, which rejects the filter (400). In the sitemap only for cities that have such cars. |
+| `/rent-a-car/[city]/[makeModel]` | `splitMakeModel` (longest known make prefix); 404 on zero results (no doorway pages); Breadcrumb + FAQPage (page 1); the "by the week or month" FAQ counts cars with `offersWeeklyMonthly` and says there's no set price. |
+| `/rent-a-car/[city]/[makeModel]/[slug]` | Vehicle detail (`fetchVehicleBySlug`, §9.2); canonical from `getVehicleUrl`; Product (LeaseOut Offer, InStock/OutOfStock, aggregateRating when rated) + Breadcrumb JSON-LD; gallery, save, **"This exact car · ★ 4.6 (12) · 30 rides on KerayeGo"** (`CarRatingLine` from the listing's `carRating`, A87 — the car's own figures across its plate; a backend without `carRating` falls back to `/reviews/summary`, which also feeds the Product `aggregateRating`), a hardcoded "Verified provider" line, price card (day price, then 6 h / 12 h, then "Week or month — Price to agree" linking to the city's weekly & monthly page when the car is switched on; never week/month prices, A79), `AppRequestCta` (§12), "Free to send a request · No payment online", "Comes with the provider's driver · No self-drive"; GA `view_vehicle`. A booked car still resolves, marked BOOKED with `bookedUntil` (formatted in the server's time zone). |
+| `…/[slug]/inquire` | Permanent redirect to the car page — the web booking form is off (A82, §12). |
 | `/rent-a-car/price-index` | Price index by city and make + month-by-month history (≥ 2 snapshots); Breadcrumb + Dataset JSON-LD (CC BY 4.0, DataDownload). |
 | `/rent-a-car/price-index/download` | Route handler, revalidate 3600: CSV `group,name,vehicles,lowest_pkr,median_pkr,average_pkr,highest_pkr` (overall, cities, makes), `kerayego-price-index-YYYY-MM-DD.csv`, `X-Robots-Tag: noindex`, 503 when empty. |
 | `/vehicles/[slug]` | Route handler: look up the slug, 301 to its `/rent-a-car/…` URL; unknown → plain-text 404. |
@@ -1260,13 +1306,19 @@ each costs an extra redirect.
 - Guides: hub + `how-carpooling-works`, `how-to-offer-a-ride`, `carpool-safety-pakistan`,
   `how-to-rent-a-car-in-pakistan`, `how-to-list-your-car-for-rent`, `monthly-vs-daily-car-rental`; each has
   a 3-level Breadcrumb + Article JSON-LD via `GuideByline`. `how-to-offer-a-ride` swaps its web CTAs for
-  app buttons once a store URL is set. `how-to-list-your-car-for-rent` still describes a "five tabs"
-  profile wizard (the page now has three tabs + a separate documents page).
+  app buttons once a store URL is set. **`monthly-vs-daily-car-rental`** was rewritten 2026-11-12 for plan
+  §3c: set prices for 6 h / 12 h / 1–6 days, no set price for a week or a month (asked in the app, agreed
+  with the business), how to ask, which to choose, and links to every city's weekly & monthly page that
+  has cars (fetched live). `how-to-rent-a-car-in-pakistan` and `how-to-list-your-car-for-rent` (also
+  updated 2026-11-12: requests sent in the app, the switch instead of week/month prices, the real profile
+  steps) no longer quote week/month prices or describe the web form.
 - `/aws-test`: now a stub returning `null` — a blank, indexable 200 page inheriting the homepage canonical.
 - **`app/sitemap.ts`**: 18 static URLs (home, rent-a-car, price index, providers, carpool, about, faq,
   contact, safety, privacy, terms, guides hub + 6); city hubs; vehicles 100 per page × max 20 pages (the
   public `/listings` caps `limit` at 100); providers 100 × 20; provider city hubs; city+make and
-  city+make-model pages from the vehicle crawl; carpool city and route URLs sampled from the newest 100
+  city+make-model pages from the vehicle crawl; weekly & monthly city pages (only cities that have such
+  cars, one `/listings?…&weeklyMonthly=true&limit=1` call per city); carpool city and route URLs sampled
+  from the newest 100
   trips only (trip pages excluded — they're noindex). Own `fetchJson`; returns what it can when the backend
   fails. `/rent-a-car` priority 0.9, `/carpool` 0.8.
 - **`app/robots.ts`** (static, fetches nothing): allows `/`, `/rent-a-car`, `/providers`, `/carpool`;
@@ -1287,9 +1339,10 @@ checkboxes + changelog when SEO-related code ships.
 - Google Analytics (`components/analytics/GoogleAnalytics.tsx`): renders nothing without
   `NEXT_PUBLIC_GA_ID`. `trackEvent` (`lib/utils/analytics.ts`) is a no-op until `window.gtag` exists (no
   queue, so first-load `TrackEvent`s are probably dropped). Events: `view_vehicle`, `view_carpool_route`,
-  `begin_booking`, `complete_booking`, `join_ride`, `offer_ride`, `list_vehicle_start`,
+  `join_ride`, `offer_ride`, `list_vehicle_start`,
   `list_vehicle_complete`, `sign_up`, `provider_signup`, `contact_provider {method:'whatsapp'}` (fires on
-  every `WhatsAppButton`, including support and trip drivers).
+  every `WhatsAppButton`, including support and trip drivers). `begin_booking` / `complete_booking` went
+  with the web booking form (2026-11-12, A82).
 - `lib/config/apps.ts`: `APP_STORE_URL` / `PLAY_STORE_URL` from env (build-time); `AppDownloadButtons`
   renders nothing while both are unset (homepage footer, `(public)` footer, `how-carpooling-works`).
 
@@ -1414,16 +1467,16 @@ importers). There is no drag-and-drop anywhere — dashed borders are styling on
 
 ## 27. Forms & validation
 
-React Hook Form + Zod (`@hookform/resolvers/zod`). Schemas in `lib/validations/` (12): `auth`
+React Hook Form + Zod (`@hookform/resolvers/zod`). Schemas in `lib/validations/` (11): `auth`
 (`phoneProfileSchema`, `requestCodeSchema`, `verifyCodeSchema`), `phone` (`sendPhoneCodeSchema`), `cnic`
 (`CNIC_PATTERN`, `cnicNumberSchema`, `formatCnicInput` — shared by business, personal-vehicle and driver
 forms), `business` (details + showroom), `team` (invite), `driver-setup` (per step), `trip`,
-`trip-inquiry`, `user-vehicle`, `booking`, `vehicle` (only its option constants are used; the live fleet
-schema is `lib/ops/vehicleForm.ts`), `provider` (**dead**). Other rule files: `lib/ops/statusAction.ts`
+`trip-inquiry`, `user-vehicle`, `vehicle` (only option constants; the live fleet schema is
+`lib/ops/vehicleForm.ts`), `provider` (**dead**). (`booking.schema.ts` went with the web booking form,
+2026-11-12.) Other rule files: `lib/ops/statusAction.ts`
 (status note), `lib/ops/ratings.ts`, `lib/driver/fields.ts`.
 
-Known gaps: `createBookingSchema` doesn't enforce a future date or an offered duration (UI only); the
-personal-vehicle uploads have no size/type check; trip stops have no UI cap; chat and decline-note inputs
+Known gaps: the personal-vehicle uploads have no size/type check; trip stops have no UI cap; chat and decline-note inputs
 have no max length matching the backend's.
 
 ---
@@ -1443,6 +1496,18 @@ three unions besides the enum; MembershipStatus as an enum (`team.types.ts`) and
 (`driver.types.ts`). AuditActionType/EntityType are typed `string`. `DOCUMENT_TYPES` (7) +
 `DriverDocumentType` (6) cover all 13 backend `DocumentType` values. Web types ignore several newer
 backend fields (§14.4, `codeSent`/`messageUsUrl`, `bookingsAsDriver`).
+
+Rental booking redesign (2026-11-11, plan §3c/§3d) types, mirrored 2026-11-12 from the Partner app's:
+`BookingStop`, `BookingRouteFields` (tripType, passengerCount, route km/minutes, way back, time needed,
+driver hours/days/km, stops), `BookingTripType` + `BOOKING_TRIP_TYPE_LABELS`, `CarClash` and
+`BookingRequestDetail.carClashes`, the business-only approach / drive-back legs
+(`types/booking-requests.types.ts`); the customer's `BookingRequest` (`lib/api/bookings.api.ts`) extends
+the route fields and adds the driver card (`identityVerified`, `licenceVerified`, `rating`, `rideCount`);
+`DriverAssignedJob` extends them too; listings get `CarRating` / `carRating` and `offersWeeklyMonthly` and
+lose `pricePerWeek` / `pricePerMonth`; fleet types get `offersWeeklyMonthly` (the payload no longer sends
+week/month prices). Every new field is optional — the web also runs on a backend from before 2026-11-11.
+`RentalDurationType` keeps WEEK and MONTH (requests can be for them); `lib/utils/rentalDuration.ts`'s
+priced packages are 6 h / 12 h / day only.
 
 When the backend changes an enum or contract, the backend is right — update the web mirror; never change
 the backend to match the web. Exact shapes: the backend's OpenAPI at `/api/docs` (dev).
@@ -1521,8 +1586,11 @@ Reported, not fixed. Fix the code, then move the item to the changelog.
   IN_PROGRESS/COMPLETED; "Remind driver" waits for a backend endpoint. The Partner app's own Accept dialog
   still says "Once accepted, only KerayeGo can change this request" next to its Cancel button (the web's
   copy was corrected).
-- Driver side (§21.8): manager-only invitees can't accept on web; no "Map" directions on jobs; answer rules
-  differ; a manager can't edit a driver's profile; the selfie fallback accepts a stored file on desktop.
+- Driver side (§21.8): manager-only invitees can't accept on web; answer rules differ; a manager can't
+  edit a driver's profile; the selfie fallback accepts a stored file on desktop.
+- Rental redesign (plan §3c/§3d): "Plate checked by KerayeGo" (A87) isn't shown — the listing doesn't say
+  yet (also open in the customer app); the business Route section has no small map of the stops (Partner
+  hasn't one either; plan §3c mentions it).
 - Live map keeps all drivers visible when one is selected (A27; same as Partner).
 - Admin: no rental-vehicle suspend/reactivate; no review delete UI.
 - No personal-information route for a PROVIDER account working only as Manager/Driver (§7).
@@ -1533,7 +1601,7 @@ Reported, not fixed. Fix the code, then move the item to the changelog.
 
 - Unbacked homepage/register figures (§23.6).
 - Carpool (the owner's top priority) is absent from the homepage and has no JSON-LD/OG on `/carpool`.
-- `how-to-list-your-car-for-rent` describes the old five-tab profile; privacy page names AWS.
+- Privacy page names AWS for storage (Google Cloud Storage since 2026-11-07).
 - `/aws-test` blank indexable page; robots doesn't disallow `/driver/`, `/account/`, `/delete-account`.
 - Root `alternates.canonical` inherited by pages without their own; Breadcrumb JSON-LD uses relative URLs.
 - Personal Gmail used as the support address on public pages.
@@ -1561,6 +1629,34 @@ Reported, not fixed. Fix the code, then move the item to the changelog.
 
 ## 33. Changelog
 
+- **2026-11-12** (jainshaikh) — Rental booking redesign on the web (plan §3c/§3d, A74–A88; the backend
+  half is from 2026-11-11 and **not on production yet** — every new field is read as optional, so the web
+  keeps working on the old backend). Not deployed. `npx tsc --noEmit` and `npm run lint` clean; no test
+  suite. Checked in a browser on a local dev server against a local mock of the new backend shapes
+  (stops, route figures, `carClashes`, driver card, `carRating`, `offersWeeklyMonthly`): business booking
+  list/detail/Accept, driver jobs, customer dashboard and requests, the fleet form, car page, city page,
+  weekly & monthly page, guide, sitemap — no console errors; not tried against the real new backend (its
+  migration isn't applied to any database confirmed safe to use).
+  - **Web booking form off (A82):** `AppRequestCta` on the car page sends customers to the app; `/inquire`
+    → 308 to the car page; removed `InquiryCta`, `useCreateBooking`, `bookingsApi.create`,
+    `booking.schema.ts`, GA `begin_booking` / `complete_booking`. §12.
+  - **Business portal = Partner (A69):** `lib/ops/bookingRoute.ts` (port), duration wording "6 hours" /
+    "3 days" / "1 week" (`durationLabel`), booking card route line + passengers + "Price to agree",
+    detail Route section (`RouteCard`), trip type, passengers, weekly/monthly hours/days/km (A85), "Price:
+    To agree" (A79), the double-booking warning on the page and in Accept + the `VEHICLE_ALREADY_BOOKED`
+    message (`CarClashWarning`, A88); fleet form's weekly & monthly switch replaces week/month prices
+    (A84), also on the read-only specs card and the admin vehicle page. §18, §19, §22.4.
+  - **Driver jobs (A72, §3c):** `JobPlaces` — stops with times and notes, "Map" per stop, "Directions for
+    the whole route" — closes the "no Map directions" parity gap. §21.6.
+  - **Customer dashboard:** package wording, route line, folded stop list, passengers, "price to agree",
+    the driver card (A86). §12.
+  - **Public:** no week/month prices anywhere (car page, cards, city/make-model copy and FAQs, homepage,
+    layout metadata, price-index note); "This exact car" with the car's rating and rides (`CarRatingLine`,
+    A87) on the car page and cards; new **weekly & monthly page per city**
+    `/rent-a-car/[city]/weekly-monthly` (A84) linked from the city hub, the car page and the rewritten
+    `monthly-vs-daily-car-rental` guide, in the sitemap; FAQ, about, rent-a-car hub and the two rental
+    guides describe requests in the app; `how-to-list-your-car-for-rent`'s stale five-tab wizard fixed;
+    removed the dead `vehicleSchema`. §23.
 - **2026-11-10** — Fixed seven bugs from the cross-check (local, not deployed). `npx tsc --noEmit` and
   `npm run lint` clean; no test suite. Checked on a local dev server against the live backend: the
   Karachi/Hyderabad city pages show the new FAQ wording; `/login` keeps a same-site `callbackUrl` in its

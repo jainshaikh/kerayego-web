@@ -11,10 +11,11 @@ Next.js 14 App Router + TypeScript site for KerayeGo, talking only to `kerayego-
 (`NEXT_PUBLIC_API_URL`, default `http://localhost:3001/v1`). Deployed on **Vercel** at
 `https://www.kerayego.com`. It covers:
 
-- **Public site + SEO** — rental listings, providers, carpool routes, guides, price index (`(public)`,
-  homepage `app/page.tsx`).
-- **Customer dashboard** `/dashboard/*` — own rental requests, carpool trips and seat requests, personal
-  vehicles, reviews, settings.
+- **Public site + SEO** — rental listings, providers, carpool routes, guides, price index, a weekly &
+  monthly page per city (`(public)`, homepage `app/page.tsx`). **No rental booking form** (plan A82): the
+  car page sends customers to the KerayeGo app (`components/vehicles/AppRequestCta.tsx`).
+- **Customer dashboard** `/dashboard/*` — own rental requests (sent from the app; package, route and
+  driver card shown), carpool trips and seat requests, personal vehicles, reviews, settings.
 - **Carpool day-of layer** — driver cockpit, rider live view, live location over the backend's `/ride`
   Socket.IO gateway, chat (`components/trips/live/`, `lib/realtime/ride-socket.ts`). Narrower than mobile:
   no offline queue, no geofencing (rider self-report is a button), the web driver's location sharing is an
@@ -37,23 +38,26 @@ shadcn) · `@vis.gl/react-google-maps` · `socket.io-client` · `sonner` · `luc
   uses them — don't introduce them.
 - Prettier: single quotes, trailing commas, width 100. ESLint: `next/core-web-vitals`.
 - Each domain has `lib/api/<domain>.api.ts` + `hooks/use<Domain>.ts`. **Wrappers are inconsistent about
-  the `{success, data}` envelope** — `auth.api.ts`, `bookings.api.ts`, most of `providers.api.ts` and parts
-  of `users.api.ts` return it un-unwrapped (table in ARCHITECTURE §9.1). Check before reading a field.
+  the `{success, data}` envelope** — `auth.api.ts`, most of `providers.api.ts` and parts of `users.api.ts`
+  return it un-unwrapped (table in ARCHITECTURE §9.1). Check before reading a field.
   Error text is at `error.response.data.error.message` — use `getApiErrorMessage` (in
   `hooks/useAccountDeletion.ts`) or `lib/ops/apiError.ts`.
 - **Business/driver UI permissions go through `can(action)`** from `hooks/useWorkspace.ts`
   (`lib/workspace/workspaceSelection.ts`). That file is a copy of the Partner app's
   `src/features/workspace/workspaceSelection.ts` — **change both together**. Route guards per action are in
   `lib/workspace/workspaceRoutes.ts`. `lib/ops/*` and `lib/driver/*` are likewise hand ports of Partner-app
-  logic; check the Partner file when changing one.
+  logic (e.g. `lib/ops/bookingRoute.ts`, `lib/ops/bookingDisplay.ts`, `lib/driver/jobPlaces.ts`); check the
+  Partner file when changing one.
 - **Dialogs** (owner rule: every sheet/modal has a top-right × and closes on tap-outside): use `Modal` or
   `components/ops/ConfirmModal.tsx`. `ConfirmDialog` (Radix AlertDialog) has neither — don't use it for new
   work.
 - Colours: Sunset Coral tokens (`brand`, `ink`, `page`, `surface`, `status-*`…). The legacy shadcn HSL
   classes (`bg-primary`, `text-foreground`…) are slated for deletion — don't add more. Status colours come
   only from `components/common/StatusBadge.tsx`.
-- **Owner policies**: every rental comes with the provider's driver — never self-drive wording; every
-  price is PKR (markets only set phone codes and cities); carpool is the top priority in public content.
+- **Owner policies** (root `CLAUDE.md` → Product rules): every rental comes with the provider's driver —
+  never self-drive wording; every price is PKR; **weeks and months have no price** — never show, ask for
+  or quote one (a car has the `offersWeeklyMonthly` switch instead; plan A79/A84); carpool is the top
+  priority in public content.
 
 ## Route groups & access
 
@@ -109,7 +113,9 @@ Components.
 - `docs/ARCHITECTURE.md` §0 lists the open items and §32 every known bug. Rules that past bugs taught:
   follow a redirect param only through `lib/utils/safeRedirect.ts`; a business never starts or completes
   a rental (plan A71 — only the driver, in the Partner app; the inbox offers Cancel for an accepted
-  booking); a customer cancels a rental request only while PENDING; to make a `serverFetch` uncached use
+  booking); a customer cancels a rental request only while PENDING; every new rental-redesign field
+  (stops, route, `carClashes`, `carRating`, `offersWeeklyMonthly`) is optional, because the web must also
+  run on a backend from before 2026-11-11; to make a `serverFetch` uncached use
   `noStore: true` (Next 14 auto-caches a fetch with no `cache` option); the rider's live view reads stops
   from the inquiry detail, never the public `GET /trips/:id` (404 once a trip starts).
 - Places autocomplete talks **directly from the browser to Google** (restricted to PK/AE/SA). The web

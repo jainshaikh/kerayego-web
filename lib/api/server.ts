@@ -68,6 +68,26 @@ export async function fetchListings(searchParams: Record<string, string | string
   return serverFetch<ServerListingsResponse>(path, { revalidate: 60 });
 }
 
+/**
+ * A city's cars offered for weekly & monthly rental (plan A84,
+ * `GET /listings?weeklyMonthly=true`): "price to agree", no prices. Null when
+ * the backend can't answer — including a backend deployed before 2026-11-11,
+ * which rejects the unknown filter (400); the `offersWeeklyMonthly` check also
+ * guards against one that would ignore it and return every car.
+ */
+export async function fetchWeeklyMonthlyListings(city: string, page = 1, limit = 24) {
+  const res = await fetchListings({ city, weeklyMonthly: 'true', page: String(page), limit: String(limit) });
+  if (!res) return null;
+  if (res.data.some((vehicle) => vehicle.offersWeeklyMonthly !== true)) return null;
+  return res;
+}
+
+/** How many cars in a city are offered for weekly & monthly rental — 0 when unknown. */
+export async function fetchWeeklyMonthlyCount(city: string): Promise<number> {
+  const res = await fetchWeeklyMonthlyListings(city, 1, 1);
+  return res?.meta?.total ?? 0;
+}
+
 export async function fetchVehicleBySlug(slug: string) {
   // Never cached: each SSR render increments viewCount, and price, status and
   // booked-until must be current. generateMetadata and the page make the same

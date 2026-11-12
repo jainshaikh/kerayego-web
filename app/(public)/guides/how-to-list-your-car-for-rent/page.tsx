@@ -42,14 +42,13 @@ const STEPS = [
     body: (
       <>
         <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
-          Fill out the short provider profile wizard — it&rsquo;s five tabs:
+          Fill in your business profile, then submit it for review:
         </p>
         <ol className="mt-2 space-y-1 text-sm leading-relaxed text-text-muted">
-          <li>1. Business Info</li>
-          <li>2. Upload Logo</li>
-          <li>3. Showroom</li>
-          <li>4. Documents</li>
-          <li>5. Submit</li>
+          <li>1. Business details — name, description, your CNIC, logo and banner</li>
+          <li>2. Your showroom — where your cars are, with its contact number</li>
+          <li>3. Business documents</li>
+          <li>4. Submit for review</li>
         </ol>
       </>
     ),
@@ -68,17 +67,18 @@ const STEPS = [
     heading: '4. Add your vehicle',
     body: (
       <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
-        Once approved, add a vehicle with photos and pricing — day, week, month, whichever you
-        want to offer. Cars on KerayeGo are rented out with your own driver only; KerayeGo
-        doesn&rsquo;t offer self-drive and never asks you to hand a car over for one. See our
-        companion guide on{' '}
+        Once approved, add a vehicle with photos and its prices — a day price, and a 6- or
+        12-hour price if you offer those. Weekly and monthly rental has no price: switch it on for
+        the car and agree the price with each customer who asks. Cars on KerayeGo are rented out
+        with your own driver only; KerayeGo doesn&rsquo;t offer self-drive and never asks you to
+        hand a car over for one. See our guide on{' '}
         <Link
           href="/guides/monthly-vs-daily-car-rental"
           className="font-semibold text-brand-700 hover:underline"
         >
-          daily vs. monthly car rental pricing
+          daily vs. monthly car rental
         </Link>{' '}
-        if you&rsquo;re not sure which to pick.
+        for how the two work.
       </p>
     ),
   },
@@ -97,8 +97,9 @@ const STEPS = [
     heading: '6. Respond to booking requests',
     body: (
       <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
-        Renters send you free booking requests. You get in touch to agree pickup, dates, and
-        payment directly with them. Before you confirm, check every document you need from the
+        Renters send you free booking requests, each with its pickup and drop-off points and the
+        route&rsquo;s kilometres and driving time. You get in touch to agree pickup and payment
+        directly with them. Before you confirm, check every document you need from the
         customer, such as their CNIC, and only confirm once you&rsquo;re satisfied.
       </p>
     ),
@@ -148,7 +149,7 @@ export default function HowToListYourCarForRentPage() {
           title="How to List Your Car for Rent on KerayeGo"
           path="/guides/how-to-list-your-car-for-rent"
           published="2026-09-19"
-          updated="2026-10-14"
+          updated="2026-11-12"
         />
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
           KerayeGo lets you list your own vehicle for rent as a provider. Here&rsquo;s the real

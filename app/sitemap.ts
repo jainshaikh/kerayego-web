@@ -142,6 +142,24 @@ async function fetchProviderCities(cities: string[]): Promise<string[]> {
   return results.filter((c): c is string => c !== null);
 }
 
+// The weekly & monthly page per city (plan A84) exists only for a city with
+// at least one car switched on for it (the page 404s otherwise). A backend
+// deployed before 2026-11-11 rejects the filter (400 → null), and the
+// offersWeeklyMonthly check guards against one that would ignore it.
+async function fetchWeeklyMonthlyCities(cities: string[]): Promise<string[]> {
+  const results = await Promise.all(
+    cities.map(async (city) => {
+      const data = await fetchJson<{ data: { offersWeeklyMonthly?: boolean }[]; meta: { total: number } }>(
+        `/listings?city=${encodeURIComponent(city)}&weeklyMonthly=true&limit=1`,
+        3600,
+      );
+      const filtered = (data?.data ?? []).every((v) => v.offersWeeklyMonthly === true);
+      return filtered && (data?.meta?.total ?? 0) > 0 ? city : null;
+    }),
+  );
+  return results.filter((c): c is string => c !== null);
+}
+
 // Same gating logic as /carpool/[route] itself (that page's generateMetadata
 // sets noindex when a route currently has zero trips) — only include routes
 // (and origin-only city hubs) with at least one live trip in this sample of
@@ -170,9 +188,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchCities(),
   ]);
 
-  const [providerCities, carpool] = await Promise.all([
+  const [providerCities, carpool, weeklyMonthlyCities] = await Promise.all([
     fetchProviderCities(cities),
     fetchCarpoolEntries(),
+    fetchWeeklyMonthlyCities(cities),
   ]);
 
   // lastmod only where we know when the content really changed: listing-driven
@@ -289,6 +308,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  const weeklyMonthlyRoutes: MetadataRoute.Sitemap = weeklyMonthlyCities.map((city) => ({
+    url: `${BASE_URL}/rent-a-car/${encodeURIComponent(city)}/weekly-monthly`,
+    changeFrequency: 'weekly' as const,
+    priority: 0.7,
+  }));
+
   // Real per-item timestamps (from the backend's `updatedAt`, which page views
   // no longer touch) rather than "now" on every build.
   const vehicleRoutes: MetadataRoute.Sitemap = vehicleUrls.map(({ path, updatedAt }) => ({
@@ -335,6 +360,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticRoutes,
     ...cityRoutes,
+    ...weeklyMonthlyRoutes,
     ...vehicleRoutes,
     ...providerRoutes,
     ...providerCityRoutes,

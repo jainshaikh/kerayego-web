@@ -10,6 +10,8 @@ import type {
   DriverVerificationStatus,
   PayoutMethod,
 } from './enums';
+import type { BookingRouteFields } from './booking-requests.types';
+import type { RentalDurationType } from '../lib/utils/rentalDuration';
 
 // The driver dashboard (/driver) — a copy of kerayego-partner's
 // types/driver.types.ts and the driver parts of types/team.types.ts, which
@@ -265,7 +267,13 @@ export interface DriverLinkedBusiness {
 // ─── Jobs ───────────────────────────────────────────────────────────────────
 
 /** GET /driver/jobs — the rental bookings a business assigned to this driver. */
-export interface DriverAssignedJob {
+/**
+ * A job on GET /driver/jobs (also what respond returns). Since 2026-11-11 it
+ * carries the route (BookingRouteFields, plan §3c): stops in route order with
+ * their expected times, trip type, passengers — never anyone's live position
+ * (plan A72).
+ */
+export interface DriverAssignedJob extends BookingRouteFields {
   id: string;
   status: DriverJobBookingStatus;
   driverJobStatus: DriverJobAnswer | null;
@@ -275,6 +283,9 @@ export interface DriverAssignedJob {
   customerPickedUpAt: string | null;
   requestedFromDate: string;
   requestedToDate: string;
+  /** The package ("12 hours", "3 days") — null on requests from before durations existed. */
+  durationType?: RentalDurationType | null;
+  durationQuantity?: number | null;
   pickupLocation: string | null;
   pickupCity?: string | null;
   /** Only a one-way job leaves the car away from home (a return trip to post). */

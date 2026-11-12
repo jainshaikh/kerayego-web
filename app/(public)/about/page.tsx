@@ -70,7 +70,7 @@ export default function AboutPage() {
           <h2 className="mt-3 text-base font-semibold text-ink">Car rental</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
             Browse vehicles by city, make, and price from providers across Pakistan, compare real
-            daily rates, and send a booking request directly from the listing — no middleman.
+            daily prices, and send a booking request in the KerayeGo app — no middleman.
             Every car comes with the provider&rsquo;s own driver; we don&rsquo;t offer self-drive.
           </p>
           <Link

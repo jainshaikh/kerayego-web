@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import type { ApiResponse, Market } from '../../types/api.types';
 import type { RentalDurationType } from '../utils/rentalDuration';
+import type { BookingRouteFields } from '../../types/booking-requests.types';
 
 export type BookingStatus =
   | 'PENDING'
@@ -40,7 +41,13 @@ export interface BookingStatusHistory {
   createdAt: string;
 }
 
-export interface BookingRequest {
+/**
+ * The customer's own rental request (GET /booking-requests). Since the redesign
+ * (2026-11-11, plan §3c) it carries the route — stops with expected times,
+ * trip type, passengers, km and time (BookingRouteFields; null / [] on older
+ * requests). The customer never gets the business-only legs.
+ */
+export interface BookingRequest extends BookingRouteFields {
   id: string;
   status: BookingStatus;
   requestedFromDate: string;
@@ -67,6 +74,12 @@ export interface BookingRequest {
       licenseCategory: string;
       yearsOfExperience?: number | null;
     } | null;
+    // The driver card (plan A86), customer responses only, since 2026-11-11.
+    // Word it "Identity verified" / "Licence verified" — never "safe".
+    identityVerified?: boolean;
+    licenceVerified?: boolean;
+    rating?: { average: number | null; count: number };
+    rideCount?: number;
   } | null;
   message?: string | null;
   providerNotes?: string | null;
@@ -88,15 +101,6 @@ export interface BookingsResponse {
   };
 }
 
-export interface CreateBookingRequestData {
-  vehicleId: string;
-  requestedFromDate: string;
-  durationType: RentalDurationType;
-  durationQuantity: number;
-  pickupLocation?: string;
-  message?: string;
-}
-
 export interface UpdateBookingStatusData {
   newStatus: BookingStatus;
   note?: string;
@@ -111,11 +115,6 @@ export interface BookingCounts {
 // other lib/api files. (Until 2026-11-10 these returned the envelope itself,
 // so the dashboard's counts read `undefined` and always showed 0.)
 export const bookingsApi = {
-  create: (data: CreateBookingRequestData) =>
-    apiClient
-      .post<ApiResponse<BookingRequest>>('/booking-requests', data)
-      .then((r) => r.data.data),
-
   getMyRequests: (page = 1, limit = 20): Promise<BookingsResponse> =>
     apiClient
       .get<ApiResponse<BookingRequest[]>>('/booking-requests', { params: { page, limit } })

@@ -39,11 +39,13 @@ function buildMakeFaqs(opts: {
           },
         ]
       : []),
+    // Weeks and months have no set price (plan A79): only cars the business
+    // switched on (A84) can be asked for them, in the KerayeGo app.
     ...(longTerm !== 'none'
       ? [
           {
             question: `Can I rent a ${vehicleName} in ${cityName} by the week or month?`,
-            answer: `Yes. ${count === 1 ? 'This listing shows' : longTerm === 'all' ? 'Every listing here shows' : 'Some listings here show'} a weekly or monthly price as well as the daily one. Open ${count === 1 ? 'it' : 'the car you like'} to see the rates, or message the provider to agree on a longer rental.`,
+            answer: `Yes. ${count === 1 ? 'This car can' : longTerm === 'all' ? 'Every car here can' : 'Some cars here can'} be rented by the week or the month, with the provider's driver. There's no set price for a week or a month: you ask for a price in the KerayeGo app, and the business calls you to agree it.`,
           },
         ]
       : []),
@@ -54,7 +56,7 @@ function buildMakeFaqs(opts: {
     {
       question: `How do I book a ${vehicleName} in ${cityName}?`,
       answer:
-        "Open the listing you like and send a free booking request. The provider gets in touch to confirm pickup, dates and payment, checks the documents they need from you (such as your CNIC) before confirming, and you can also message them on WhatsApp straight from the listing. Nothing is paid online.",
+        "Open the listing you like and send a free booking request in the KerayeGo app, with your pickup and drop-off points. The provider gets in touch to confirm pickup and payment, checks the documents they need from you (such as your CNIC) before confirming, and you can also message them on WhatsApp straight from the listing. Nothing is paid online.",
     },
   ];
 }
@@ -139,7 +141,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       page > 1
         ? `${vehicleName} for Rent in ${cityName} - Page ${page}`
         : `${vehicleName} for Rent in ${cityName} — Compare Prices`,
-    description: `Rent a ${vehicleName} in ${cityName}${region ? `, ${region}` : ''} from verified providers. Compare daily and weekly prices, message the owner directly, and book with no hidden fees.`,
+    description: `Rent a ${vehicleName} in ${cityName}${region ? `, ${region}` : ''} with a driver from verified providers. Compare daily prices, message the owner directly, and book with no hidden fees.`,
     keywords: [
       `${vehicleName.toLowerCase()} rent ${city}`,
       `${vehicleName} for rent ${cityName}`,
@@ -196,15 +198,13 @@ export default async function CityMakeModelCarRentalPage({ params, searchParams 
   const maxYear = Math.max(...years);
   const modelLabels = models.map((m) => toVehicleLabel(m));
   const manualCount = vehicles.filter((v) => v.transmission === Transmission.MANUAL).length;
-  const weeklyCount = vehicles.filter((v) => v.pricePerWeek).length;
-  const monthlyCount = vehicles.filter((v) => v.pricePerMonth).length;
+  // Cars on this page the business switched on for weekly & monthly rental (A84).
+  const weeklyMonthlyCount = vehicles.filter((v) => v.offersWeeklyMonthly).length;
   const rates = describeRates({
     total: vehicles.length,
     automatic: vehicles.length - manualCount,
     manual: manualCount,
     hourly: vehicles.filter((v) => v.pricePer6Hours || v.pricePer12Hours).length,
-    weekly: weeklyCount,
-    monthly: monthlyCount,
   });
   const carWord = total === 1 ? 'car' : 'cars';
 
@@ -228,7 +228,6 @@ export default async function CityMakeModelCarRentalPage({ params, searchParams 
       : '',
     vehicles.length >= 2 ? rates.transmission : '',
     rates.hourly,
-    rates.longTerm,
   ].filter(Boolean);
 
   const makeFaqs = buildMakeFaqs({
@@ -239,11 +238,7 @@ export default async function CityMakeModelCarRentalPage({ params, searchParams 
     maxPrice,
     count: total,
     longTerm:
-      weeklyCount + monthlyCount === 0
-        ? 'none'
-        : weeklyCount === vehicles.length && monthlyCount === vehicles.length
-          ? 'all'
-          : 'some',
+      weeklyMonthlyCount === 0 ? 'none' : weeklyMonthlyCount === vehicles.length ? 'all' : 'some',
   });
   const faqJsonLd = {
     '@context': 'https://schema.org',
@@ -308,8 +303,8 @@ export default async function CityMakeModelCarRentalPage({ params, searchParams 
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
           Browse {vehicleName} vehicles for rent in {cityName} from verified local providers.
-          Compare real daily and weekly rates, and send a free inquiry — no payment until
-          you&rsquo;re ready to book.
+          Compare real daily prices, and send a free booking request in the KerayeGo app —
+          nothing is paid online.
           {' '}
           {total.toLocaleString()} vehicle{total === 1 ? '' : 's'} currently available.
           {!modelName && models.length > 0 && ` Popular models: ${modelLabels.join(', ')}.`}

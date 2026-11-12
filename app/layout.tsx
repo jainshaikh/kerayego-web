@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     template: '%s | KerayeGo',
   },
   description:
-    'Find a car for rent in Karachi, Lahore, Islamabad, Hyderabad, and other cities across Pakistan. Compare verified providers, real daily and weekly rates, and book in minutes — or share a ride and carpool between cities on Intercity Trips.',
+    'Find a car for rent in Karachi, Lahore, Islamabad, Hyderabad, and other cities across Pakistan. Compare verified providers and real daily prices, and book in minutes — or share a ride and carpool between cities on Intercity Trips.',
   // Pakistan leads the homepage/keyword story since it's the live, seeded
   // market (see prisma/seed.ts) — Saudi Arabia/UAE data coexists (currency
   // display is dynamic per listing, see lib/utils/currency.ts) but isn't the

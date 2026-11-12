@@ -55,8 +55,17 @@ export interface FleetVehicleBase {
   pricePer6Hours: string | null;
   pricePer12Hours: string | null;
   pricePerDay: string;
-  pricePerWeek: string | null;
-  pricePerMonth: string | null;
+  /**
+   * Offered for weekly & monthly rental — "price to agree", no price (plan
+   * A79, A84, 2026-11-11). Absent from a backend deployed before that.
+   */
+  offersWeeklyMonthly?: boolean;
+  /**
+   * Old week / month prices: no longer stored or shown since 2026-11-11 (A79) —
+   * kept on cars that had one. Read only by offersWeeklyMonthly() as a fallback.
+   */
+  pricePerWeek?: string | null;
+  pricePerMonth?: string | null;
   locationText: string | null;
   availabilityNotes: string | null;
   pricingNotes: string | null;
@@ -122,8 +131,8 @@ export interface CreateVehiclePayload {
   pricePer6Hours?: number;
   pricePer12Hours?: number;
   pricePerDay: number;
-  pricePerWeek?: number;
-  pricePerMonth?: number;
+  /** The weekly & monthly switch (A84). The backend still takes pricePerWeek / pricePerMonth but never stores them, so they're not sent. */
+  offersWeeklyMonthly?: boolean;
   locationText?: string;
   availabilityNotes?: string;
   pricingNotes?: string;
@@ -138,8 +147,6 @@ export type ClearableVehicleField =
   | 'engineType'
   | 'pricePer6Hours'
   | 'pricePer12Hours'
-  | 'pricePerWeek'
-  | 'pricePerMonth'
   | 'locationText'
   | 'availabilityNotes'
   | 'pricingNotes'

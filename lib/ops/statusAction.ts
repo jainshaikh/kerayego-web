@@ -85,17 +85,25 @@ export function statusActionCopy(status: BookingStatus): StatusActionCopy {
   }
 }
 
+/** 409 on the move to ACCEPTED: the car has another accepted / in-progress booking at an overlapping time (A88). */
+export const VEHICLE_ALREADY_BOOKED = 'VEHICLE_ALREADY_BOOKED';
+
 /** The backend's refusal of the status move itself, not of the driver. */
 const STATUS_MOVE_REFUSED = /cannot (change status|transition)|already exists/i;
 
 /**
  * The message for a failed status change:
+ * - accepting a car that's already booked at that time (409 VEHICLE_ALREADY_BOOKED,
+ *   A88): the backend's words ("This car is already booked from … to …") and what to do;
  * - accepting with a driver who can't take it (400/409 about the driver): say so;
  * - 400 without field errors: the request changed meanwhile (usually the customer cancelled);
  * - 409: someone else changed the booking at the same moment — same as a 400.
  */
 export function statusUpdateErrorMessage(error: unknown, options: { withDriver?: boolean } = {}): string {
   const info = apiErrorInfo(error);
+  if (info.code === VEHICLE_ALREADY_BOOKED) {
+    return `${info.message} Decline this request, or ask the customer about another time.`;
+  }
   if (
     options.withDriver &&
     (info.kind === 'validation' || info.kind === 'conflict') &&

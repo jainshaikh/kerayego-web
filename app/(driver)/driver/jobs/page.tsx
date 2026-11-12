@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Briefcase, CalendarDays, Car, Loader2, MapPin, Smartphone, UserRound } from 'lucide-react';
+import { Briefcase, CalendarDays, Car, Loader2, Smartphone, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card, EmptyState, ErrorState } from '../../../../components/ui';
 import { StatusBadge } from '../../../../components/common/StatusBadge';
+import { JobPlaces } from '../../../../components/driver/JobPlaces';
 import { RateCustomerModal } from '../../../../components/driver/RateCustomerModal';
 import { ReturnTripModal } from '../../../../components/driver/ReturnTripModal';
 import { useDriverActionError } from '../../../../hooks/useDriverProfile';
@@ -25,7 +26,9 @@ const PARTNER_APP_NOTE =
 // The driver's assigned jobs (kerayego-partner app/(driver)/(tabs)/driver/jobs.tsx):
 // Accept / Decline a job a business assigned (Decline works even while the
 // account is on hold; Accept is refused with the hold message), the job's
-// customer, car, dates and pickup, its state as text, "Rate customer" for a
+// customer, car, dates, its route (JobPlaces: the stops with expected times and
+// notes, "Map" for each and directions for the whole route — plan §3c, A72),
+// its state as text, "Rate customer" for a
 // completed job whose customer is unrated, and "Post return trip" for a
 // completed one-way job. No Start/End, "Picked up customer", live location or
 // customer location here — the on-trip session is in the Partner app only.
@@ -91,7 +94,6 @@ export default function DriverJobsPage() {
             const pendingRating = state.isCompleted ? findPendingCustomerRating(eligibleQuery.data, job.id) : null;
             const answer = job.driverJobStatus && job.driverJobStatus !== 'ACCEPTED' ? job.driverJobStatus : null;
             const responding = respondJob.isPending && respondJob.variables?.bookingId === job.id;
-            const route = job.isOneWay && job.dropoffCity ? `${job.pickupCity ?? ''} → ${job.dropoffCity}` : null;
 
             return (
               <li key={job.id}>
@@ -126,18 +128,9 @@ export default function DriverJobsPage() {
                     <Detail icon={CalendarDays} label="Return">
                       {formatDate(job.requestedToDate)}
                     </Detail>
-                    {job.pickupLocation ? (
-                      <Detail icon={MapPin} label="Location">
-                        {job.pickupLocation}
-                      </Detail>
-                    ) : null}
-                    {route ? (
-                      <Detail icon={MapPin} label="One way">
-                        {route}
-                        {job.dropoffLocation ? ` (${job.dropoffLocation})` : ''}
-                      </Detail>
-                    ) : null}
                   </dl>
+
+                  <JobPlaces job={job} />
 
                   {state.isInProgress ? (
                     <p className="mt-4 text-sm font-medium text-status-violet-fg">

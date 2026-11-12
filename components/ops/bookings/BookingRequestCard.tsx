@@ -10,15 +10,21 @@ import {
   totalPriceLabel,
 } from '../../../lib/ops/bookingDisplay';
 import { needsDriver } from '../../../lib/ops/driverAssignment';
+import { bookingPlaceSummary, isPriceToAgree, passengersLabel } from '../../../lib/ops/bookingRoute';
 import type { BookingRequest } from '../../../types/booking-requests.types';
 import { CarThumbnail } from './BookingBits';
 
-// One request in the business's list: car, status, customer, pickup → return
-// with the duration, the estimated total — and "Needs a driver" on an accepted
-// booking nobody is driving yet. Opens its detail page.
+// One request in the business's list: car, status, customer, where it goes
+// ("Hyderabad → Larkana · 330 km", plan §3c), pickup → return, then the
+// package, passengers and the estimated total ("Price to agree" on a
+// week/month request, A79) — and "Needs a driver" on an accepted booking
+// nobody is driving yet. Opens its detail page. Same as the Partner app's card.
 export function BookingRequestCard({ booking }: { booking: BookingRequest }) {
+  const places = bookingPlaceSummary(booking);
   const duration = durationLabel(booking.durationType, booking.durationQuantity);
   const total = totalPriceLabel(booking);
+  const price = total ? `${total} est.` : isPriceToAgree(booking) ? 'Price to agree' : null;
+  const details = [duration, passengersLabel(booking.passengerCount), price].filter(Boolean);
   const missingDriver = needsDriver(booking);
 
   return (
@@ -31,13 +37,12 @@ export function BookingRequestCard({ booking }: { booking: BookingRequest }) {
             <StatusBadge status={booking.status} size="sm" label={BOOKING_STATUS_LABELS[booking.status]} />
           </div>
           <p className="mt-0.5 truncate text-sm text-ink">{booking.user.name}</p>
+          {places ? <p className="mt-0.5 truncate text-xs text-text-muted">{places}</p> : null}
           <p className="mt-1 font-mono text-xs text-text-muted">
             {formatDateTime(booking.requestedFromDate, false)} → {formatDateTime(booking.requestedToDate, false)}
           </p>
-          {duration || total ? (
-            <p className="mt-0.5 text-xs text-text-muted">
-              {[duration, total ? `${total} est.` : null].filter(Boolean).join(' · ')}
-            </p>
+          {details.length > 0 ? (
+            <p className="mt-0.5 text-xs text-text-muted">{details.join(' · ')}</p>
           ) : null}
           {missingDriver ? (
             <StatusBadge status="PENDING" size="sm" label="Needs a driver" className="mt-2" />

@@ -42,24 +42,18 @@ interface RateCounts {
   automatic: number;
   manual: number;
   hourly: number;
-  weekly: number;
-  monthly: number;
 }
 
 // Plain-language sentences summarising a batch of listings, phrased so they
 // read naturally whatever the numbers are (singular/plural, all vs some).
-// Each is '' when there's nothing true to say.
-export function describeRates(c: RateCounts): { transmission: string; hourly: string; longTerm: string } {
+// Each is '' when there's nothing true to say. No week or month prices: since
+// 2026-11-11 they don't exist (plan A79) — the pages link to the city's
+// weekly & monthly page instead.
+export function describeRates(c: RateCounts): { transmission: string; hourly: string } {
   if (c.total === 1) {
     return {
       transmission: `It's ${c.manual > 0 ? 'manual' : 'automatic'}.`,
       hourly: c.hourly > 0 ? 'It also has a 6- or 12-hour rate if you only need it for part of the day.' : '',
-      longTerm:
-        c.weekly > 0 && c.monthly > 0
-          ? 'It has a weekly and a monthly price too.'
-          : c.weekly + c.monthly > 0
-            ? `It has a ${c.weekly > 0 ? 'weekly' : 'monthly'} price too.`
-            : '',
     };
   }
 
@@ -78,16 +72,7 @@ export function describeRates(c: RateCounts): { transmission: string; hourly: st
         ? 'If you only need a car for part of the day, all of them have 6- or 12-hour rates.'
         : `${ofThem(c.hourly)} 6- or 12-hour rates if you only need a car for part of the day.`;
 
-  const longTerm =
-    c.weekly + c.monthly === 0
-      ? ''
-      : all(c.weekly) && all(c.monthly)
-        ? 'Every car also has a weekly and a monthly price.'
-        : c.weekly > 0 && c.monthly > 0
-          ? `${ofThem(c.weekly)} a weekly price, and ${countWord(c.monthly)} ${c.monthly === 1 ? 'has' : 'have'} a monthly one.`
-          : `${ofThem(c.weekly || c.monthly)} a ${c.weekly > 0 ? 'weekly' : 'monthly'} price.`;
-
-  return { transmission, hourly, longTerm };
+  return { transmission, hourly };
 }
 
 // A car's plate-wide ride count (plan A17): "1 ride on KerayeGo", "23 rides on KerayeGo".

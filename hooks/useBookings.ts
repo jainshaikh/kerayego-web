@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { bookingsApi, type BookingStatus, type CreateBookingRequestData, type UpdateBookingStatusData } from '../lib/api/bookings.api';
-import { trackEvent } from '../lib/utils/analytics';
-import { getApiErrorMessage } from './useAccountDeletion';
+import { bookingsApi, type BookingStatus, type UpdateBookingStatusData } from '../lib/api/bookings.api';
 
 // ── User hooks ──────────────────────────────────────────────────────────────
 
@@ -29,20 +27,8 @@ export function useBooking(id: string) {
   });
 }
 
-export function useCreateBooking() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateBookingRequestData) => bookingsApi.create(data),
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['bookings'] });
-      trackEvent('complete_booking', { vehicle_id: variables.vehicleId });
-    },
-    // Shows the server's message, e.g. the hold message on 403 IDENTITY_ON_HOLD.
-    onError: (err: unknown) => {
-      toast.error(getApiErrorMessage(err, 'Failed to send inquiry'));
-    },
-  });
-}
+// No useCreateBooking: the website's rental booking form is switched off
+// (plan A82, 2026-11-11) — customers send requests in the KerayeGo app.
 
 const STATUS_TOAST: Partial<Record<BookingStatus, string>> = {
   CONTACTED: 'Marked as contacted',

@@ -11,6 +11,7 @@ import { getVehicleUrl } from '../../lib/utils/vehicleUrl';
 import { vehicleImageAlt } from '../../lib/utils/copy';
 import { Avatar } from '../ui';
 import { SaveButton } from './SaveButton';
+import { CarRatingLine } from './CarRatingLine';
 
 interface VehicleCardProps {
   vehicle: ListingVehicleCard;
@@ -18,9 +19,15 @@ interface VehicleCardProps {
   /** Load the cover eagerly — set on the first card of a grid, which is the
    * page's Largest Contentful Paint element on mobile (one column). */
   priority?: boolean;
+  /**
+   * What the price badge says: the day price (default), or "Price to agree"
+   * on the weekly & monthly pages (plan A79/A84 — weeks and months have no
+   * price; the business agrees one with the customer).
+   */
+  priceMode?: 'day' | 'toAgree';
 }
 
-export function VehicleCard({ vehicle, className, priority = false }: VehicleCardProps) {
+export function VehicleCard({ vehicle, className, priority = false, priceMode = 'day' }: VehicleCardProps) {
   const router = useRouter();
   const cover = vehicle.images?.[0];
   const price = Number(vehicle.pricePerDay).toLocaleString();
@@ -64,8 +71,14 @@ export function VehicleCard({ vehicle, className, priority = false }: VehicleCar
 
         {/* Price badge — fills with the brand gradient on hover */}
         <div className="group-hover:bg-brand absolute bottom-2.5 left-2.5 rounded-control bg-ink/80 px-3 py-1.5 font-mono text-[13px] font-semibold text-white backdrop-blur-md transition-colors duration-200">
-          {currency} {price}
-          <span className="font-sans font-normal opacity-75">/day</span>
+          {priceMode === 'toAgree' ? (
+            <span className="font-sans">Price to agree</span>
+          ) : (
+            <>
+              {currency} {price}
+              <span className="font-sans font-normal opacity-75">/day</span>
+            </>
+          )}
         </div>
 
         <SaveButton vehicleId={vehicle.id} size="sm" className="absolute right-2.5 top-2.5" />
@@ -76,6 +89,14 @@ export function VehicleCard({ vehicle, className, priority = false }: VehicleCar
         <h3 className="truncate text-base font-semibold leading-tight tracking-tight text-ink transition-colors group-hover:text-brand-700">
           {vehicle.title}
         </h3>
+
+        {/* "This exact car" with its own rating and rides (A87) — no extra request per card. */}
+        <CarRatingLine
+          vehicleId={vehicle.id}
+          carRating={vehicle.carRating}
+          fetchIfMissing={false}
+          className="mt-1.5"
+        />
 
         {/* Specs row — flex-wrap is required; three chips plus an icon overflow at card width */}
         <div className="mt-2.5 flex flex-wrap gap-1.5">

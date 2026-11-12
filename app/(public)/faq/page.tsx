@@ -30,7 +30,7 @@ const FAQS: { question: string; answer: string }[] = [
   {
     question: 'How do I rent a car on KerayeGo?',
     answer:
-      'Browse available vehicles on the Rent a Car page, filter by city, make, or price, and open a listing you like. Send a booking request directly from the vehicle page — the provider will get in touch to confirm pickup, dates, and payment.',
+      'Browse available vehicles on the Rent a Car page, filter by city, make, or price, and open a listing you like. Send a booking request in the KerayeGo app — choose 6 hours, 12 hours or a number of days and add your pickup and drop-off points — and the provider will get in touch to confirm pickup and payment. For a week or a month there is no set price: ask for one in the app and agree it with the business.',
   },
   {
     question: 'Do I need to pay online to book a car?',
@@ -65,7 +65,7 @@ const FAQS: { question: string; answer: string }[] = [
   {
     question: 'Can I cancel a booking or a ride request?',
     answer:
-      "Yes. You can cancel a rental booking request you've sent from your account, as long as it hasn't already been completed. A carpool seat request can be withdrawn any time before the driver answers it, and once you've been accepted you can still cancel up until the departure time.",
+      "Yes. You can cancel a rental booking request in the KerayeGo app until the provider has been in touch about it. A carpool seat request can be withdrawn any time before the driver answers it, and once you've been accepted you can still cancel up until the departure time.",
   },
   {
     question: 'Which cities does KerayeGo cover?',

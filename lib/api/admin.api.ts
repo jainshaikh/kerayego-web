@@ -136,6 +136,9 @@ export interface AdminVehicleDetail {
   pricePer6Hours?: string | number | null;
   pricePer12Hours?: string | number | null;
   pricePerDay: string | number;
+  /** Weekly & monthly rental, "price to agree" (plan A79/A84) — replaced the week and month prices on 2026-11-11. */
+  offersWeeklyMonthly?: boolean;
+  /** Old week/month prices, kept on cars that had one; no longer set or shown (A79). */
   pricePerWeek?: string | number | null;
   pricePerMonth?: string | number | null;
   locationText?: string | null;

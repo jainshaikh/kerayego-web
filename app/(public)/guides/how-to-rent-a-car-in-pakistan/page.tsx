@@ -65,7 +65,7 @@ export default function HowToRentACarInPakistanGuidePage() {
           title="How to Rent a Car in Pakistan"
           path="/guides/how-to-rent-a-car-in-pakistan"
           published="2026-09-19"
-          updated="2026-10-14"
+          updated="2026-11-12"
         />
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
           This guide walks through renting a car on KerayeGo from start to finish — browsing
@@ -96,23 +96,25 @@ export default function HowToRentACarInPakistanGuidePage() {
       <section className="mb-8">
         <h2 className="mb-2 text-base font-semibold text-ink">2. Check the listing</h2>
         <p className="text-sm leading-relaxed text-text-muted">
-          Open a vehicle you like to see its real daily rate — and weekly or monthly rate if the
-          provider has set one, see our companion guide on{' '}
+          Open a vehicle you like to see its real day price — and its 6- or 12-hour price if it
+          has one — along with photos, its rating and provider details. Need it for a week or a
+          month? There&rsquo;s no set price for that; see our guide on{' '}
           <Link
             href="/guides/monthly-vs-daily-car-rental"
             className="font-semibold text-brand-700 hover:underline"
           >
-            daily vs. monthly pricing
-          </Link>{' '}
-          — along with photos and provider details.
+            daily vs. monthly car rental
+          </Link>
+          .
         </p>
       </section>
 
       <section className="mb-8">
         <h2 className="mb-2 text-base font-semibold text-ink">3. Send a free booking request</h2>
         <p className="text-sm leading-relaxed text-text-muted">
-          Send an inquiry directly from the listing page. This doesn&rsquo;t cost anything and
-          doesn&rsquo;t require any payment.
+          Send your request in the KerayeGo app: choose 6 hours, 12 hours or a number of days, add
+          your pickup and drop-off points, and the app shows how long the trip takes before you send
+          it. It doesn&rsquo;t cost anything and doesn&rsquo;t require any payment.
         </p>
       </section>
 
@@ -130,8 +132,8 @@ export default function HowToRentACarInPakistanGuidePage() {
       <section className="mb-10">
         <h2 className="mb-2 text-base font-semibold text-ink">5. Change your mind?</h2>
         <p className="text-sm leading-relaxed text-text-muted">
-          You can cancel a booking request you&rsquo;ve sent from your dashboard, as long as it
-          hasn&rsquo;t already been completed.
+          You can cancel a request in the KerayeGo app until the provider has been in touch about
+          it.
         </p>
       </section>
 

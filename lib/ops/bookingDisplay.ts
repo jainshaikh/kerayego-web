@@ -160,18 +160,28 @@ export function emptyListCopy(filter: BookingFilter): { title: string; descripti
 
 // ─── Duration, price, dates ─────────────────────────────────────────────────
 
-const DURATION_UNITS: Record<RentalDurationType, string> = {
-  HOURS_6: '6-hour block',
-  HOURS_12: '12-hour block',
-  DAY: 'day',
-  WEEK: 'week',
-  MONTH: 'month',
+// The package as people say it (plan A74): "6 hours", "12 hours", "3 days",
+// "1 week". Hour packages are never multiplied any more, but requests sent
+// before that can still carry a count, shown as "6 hours × 2". Same as the
+// Partner app's durationLabel.
+const HOUR_PACKAGES: Partial<Record<RentalDurationType, string>> = {
+  HOURS_6: '6 hours',
+  HOURS_12: '12 hours',
+};
+const COUNTED_UNITS: Partial<Record<RentalDurationType, [one: string, many: string]>> = {
+  DAY: ['day', 'days'],
+  WEEK: ['week', 'weeks'],
+  MONTH: ['month', 'months'],
 };
 
-/** "3 days", "1 week", "2 12-hour blocks" — null on old requests without a duration. */
+/** "6 hours", "3 days", "1 week" (old hour requests: "6 hours × 2") — null on old requests without a duration. */
 export function durationLabel(type: RentalDurationType | null | undefined, quantity: number | null | undefined): string | null {
   if (!type || !quantity) return null;
-  return `${quantity} ${DURATION_UNITS[type]}${quantity === 1 ? '' : 's'}`;
+  const hours = HOUR_PACKAGES[type];
+  if (hours) return quantity === 1 ? hours : `${hours} × ${quantity}`;
+  const units = COUNTED_UNITS[type];
+  if (!units) return null;
+  return `${quantity} ${quantity === 1 ? units[0] : units[1]}`;
 }
 
 /** "PKR 5,000" — a backend Decimal string or number in `currency`; "—" without a value. */

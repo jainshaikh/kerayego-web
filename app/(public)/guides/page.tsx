@@ -32,7 +32,7 @@ const GUIDES: { title: string; description: string; href: string }[] = [
   {
     title: 'Monthly vs. Daily Car Rental',
     description:
-      "How KerayeGo's daily, weekly, and monthly rental pricing works, and how to compare them.",
+      'Set prices for hours and days, a price you agree for weeks and months — and which one fits your trip.',
     href: '/guides/monthly-vs-daily-car-rental',
   },
   {

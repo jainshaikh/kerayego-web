@@ -15,12 +15,11 @@ import { fetchVehicleBySlug, fetchRatingSummary } from '../../../../../../lib/ap
 import type { ListingVehicleDetail } from '../../../../../../lib/api/listings.api';
 import { getCurrencyCode } from '../../../../../../lib/utils/currency';
 import { getAvailableDurations, getUnitPrice } from '../../../../../../lib/utils/rentalDuration';
-import { getVehicleUrl } from '../../../../../../lib/utils/vehicleUrl';
-import { rideCountLabel } from '../../../../../../lib/utils/copy';
+import { getVehicleUrl, weeklyMonthlyCityUrl } from '../../../../../../lib/utils/vehicleUrl';
 import { Card } from '../../../../../../components/ui';
-import { RatingSummaryBadge } from '../../../../../../components/common/RatingSummaryBadge';
 import { ReviewsList } from '../../../../../../components/common/ReviewsList';
-import { InquiryCta } from '../../../../../../components/vehicles/InquiryCta';
+import { AppRequestCta } from '../../../../../../components/vehicles/AppRequestCta';
+import { CarRatingLine } from '../../../../../../components/listings/CarRatingLine';
 import { VehicleImageGallery } from '../../../../../../components/vehicles/VehicleImageGallery';
 import { TrackEvent } from '../../../../../../components/common/TrackEvent';
 import { SaveButton } from '../../../../../../components/listings/SaveButton';
@@ -96,10 +95,17 @@ export default async function VehicleDetailPage({ params }: PageProps) {
   const availableDurations = getAvailableDurations(vehicle);
   const location = vehicle.showroom?.city ?? vehicle.locationText ?? null;
   const cityDisplay = location ? location.charAt(0).toUpperCase() + location.slice(1) : null;
-  const inquireHref = `${getVehicleUrl(vehicle, location)}/inquire`;
 
-  const ratingRes = await fetchRatingSummary('VEHICLE', vehicle.id);
-  const rating = ratingRes?.data;
+  // "This exact car" (A87): the listing carries the car's own rating and rides
+  // (carRating). A backend deployed before 2026-11-11 doesn't send it — then
+  // the review summary is fetched, as before.
+  const carRating =
+    vehicle.carRating ??
+    (await fetchRatingSummary('VEHICLE', vehicle.id).then((res) =>
+      res?.data
+        ? { averageRating: res.data.average, reviewCount: res.data.count, rideCount: res.data.rideCount ?? 0 }
+        : undefined,
+    ));
 
   const productJsonLd = {
     '@context': 'https://schema.org',
@@ -110,12 +116,12 @@ export default async function VehicleDetailPage({ params }: PageProps) {
     brand: { '@type': 'Brand', name: vehicle.make },
     // Only attach aggregateRating when there's at least one real review —
     // Google's guidelines disallow self-assigned/placeholder ratings.
-    ...(rating && rating.count > 0 && rating.average !== null
+    ...(carRating && carRating.reviewCount > 0 && carRating.averageRating !== null
       ? {
           aggregateRating: {
             '@type': 'AggregateRating',
-            ratingValue: rating.average,
-            reviewCount: rating.count,
+            ratingValue: carRating.averageRating,
+            reviewCount: carRating.reviewCount,
             bestRating: 5,
             worstRating: 1,
           },
@@ -207,9 +213,8 @@ export default async function VehicleDetailPage({ params }: PageProps) {
               <SaveButton vehicleId={vehicle.id} className="flex-shrink-0 border border-border-subtle" />
             </div>
             <div className="mt-3.5 flex flex-wrap items-center gap-3.5 text-[13px] text-text-muted">
-              <RatingSummaryBadge subjectType="VEHICLE" subjectId={vehicle.id} size="sm" showRideCount={false} />
-              {/* The plate's ride count (plan A17), rendered server-side as plain text. */}
-              {rating?.rideCount ? <span>{rideCountLabel(rating.rideCount)}</span> : null}
+              {/* "This exact car" with its own rating and rides across its plate (A87, A17). */}
+              <CarRatingLine vehicleId={vehicle.id} carRating={carRating} size="sm" />
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
                 {vehicle.showroom?.city ?? vehicle.locationText ?? '—'}
@@ -315,7 +320,9 @@ export default async function VehicleDetailPage({ params }: PageProps) {
                 <span className="text-[13px] text-text-muted">/ day</span>
               </div>
 
-              {availableDurations.length > 1 && (
+              {/* The car's other priced packages (6 and 12 hours). Weeks and months
+                  have no price (plan A79) — a car switched on for them says so. */}
+              {(availableDurations.length > 1 || vehicle.offersWeeklyMonthly) && (
                 <dl className="mt-3 space-y-1 border-t border-border-subtle pt-3">
                   {availableDurations
                     .filter((d) => d.value !== 'DAY')
@@ -327,6 +334,20 @@ export default async function VehicleDetailPage({ params }: PageProps) {
                         </dd>
                       </div>
                     ))}
+                  {vehicle.offersWeeklyMonthly ? (
+                    <div className="flex items-center justify-between text-[13px]">
+                      <dt className="text-text-muted">
+                        {location ? (
+                          <Link href={weeklyMonthlyCityUrl(location)} className="hover:text-brand-700 hover:underline">
+                            Week or month
+                          </Link>
+                        ) : (
+                          'Week or month'
+                        )}
+                      </dt>
+                      <dd className="font-medium text-ink">Price to agree</dd>
+                    </div>
+                  ) : null}
                 </dl>
               )}
 
@@ -345,14 +366,15 @@ export default async function VehicleDetailPage({ params }: PageProps) {
 
               {/* Contact CTA */}
               <div className="mt-5 space-y-2.5">
-                <InquiryCta
-                  inquireHref={inquireHref}
+                {/* Booking requests are sent in the KerayeGo app (plan A82) — the web form is off. */}
+                <AppRequestCta
                   vehicleTitle={vehicle.title}
                   whatsappNumber={vehicle.showroom?.whatsappNumber}
+                  offersWeeklyMonthly={vehicle.offersWeeklyMonthly}
                 />
 
                 <p className="text-center text-xs text-text-faint">
-                  Free to inquire · No payment yet
+                  Free to send a request · No payment online
                 </p>
                 {/* Company policy, not a per-car field: every rental is with the provider's driver. */}
                 <p className="text-center text-xs text-text-faint">

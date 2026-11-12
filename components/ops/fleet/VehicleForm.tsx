@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Card, Input, PillToggle, Select, Textarea } from '../../ui';
+import { Button, Card, Input, PillToggle, Select, Switch, Textarea } from '../../ui';
 import { getCurrencyCode } from '../../../lib/utils/currency';
 import type { Showroom } from '../../../types/api.types';
 import {
@@ -221,8 +221,8 @@ export function VehicleForm({
       <Section title="Pricing">
         <p className="text-xs leading-relaxed text-text-muted">
           Prices are in {currency}, for the car with your driver — every KerayeGo rental comes with the business&apos;s
-          driver. The daily price is required; set any of the others to let customers pick that duration too, or leave
-          it blank if you don&apos;t offer it.
+          driver. The daily price is required; set the 6-hour or 12-hour price to let customers book that package too, or
+          leave it blank if you don&apos;t offer it.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {priceFields.map(({ name, label }) => (
@@ -246,6 +246,23 @@ export function VehicleForm({
             />
           ))}
         </div>
+        {/* Weeks and months have no price (A79): one switch puts the car on the weekly & monthly pages (A84). */}
+        <Controller
+          control={control}
+          name="offersWeeklyMonthly"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4 rounded-control border border-border-subtle bg-page p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink">Weekly &amp; monthly rental</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-text-muted">
+                  Customers can ask for this car by the week or month. There&apos;s no set price — you agree it with
+                  the customer when they get in touch.
+                </p>
+              </div>
+              <Switch checked={field.value} onChange={field.onChange} label="Weekly and monthly rental" />
+            </div>
+          )}
+        />
         <Input
           label="Pricing notes (optional)"
           placeholder="e.g. Fuel included, minimum 3 days"

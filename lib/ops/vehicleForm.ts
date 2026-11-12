@@ -13,8 +13,13 @@ import { COMMON_FEATURES, FUEL_TYPE_OPTIONS, TRANSMISSION_OPTIONS } from '../val
 // CreateVehicleDto limits) and the request bodies. Number fields are kept as
 // the text typed, so a cleared field stays empty and a price like "3500.5" can
 // be typed a key at a time. An emptied optional field is sent as null on edit
-// (which clears it) — the old web edit form left it out, so a weekly price
+// (which clears it) — the old web edit form left it out, so an optional price
 // could never be removed.
+//
+// Weekly and monthly have no price (owner decision 2026-11-11, plan A79, A84):
+// the form has a "Weekly & monthly rental" switch instead
+// (offersWeeklyMonthly) — those requests are a "price to agree" the business
+// discusses with the customer. Same as the Partner app's form.
 
 const currentYear = new Date().getFullYear();
 export const VEHICLE_YEAR_MIN = 1990;
@@ -27,8 +32,6 @@ export const PRICE_FIELDS = [
   { name: 'pricePer6Hours', label: '6-hour price' },
   { name: 'pricePer12Hours', label: '12-hour price' },
   { name: 'pricePerDay', label: 'Daily price' },
-  { name: 'pricePerWeek', label: 'Weekly price' },
-  { name: 'pricePerMonth', label: 'Monthly price' },
 ] as const;
 
 export type PriceFieldName = (typeof PRICE_FIELDS)[number]['name'];
@@ -88,8 +91,7 @@ export const vehicleFormSchema = z.object({
   pricePer6Hours: priceField(false),
   pricePer12Hours: priceField(false),
   pricePerDay: priceField(true),
-  pricePerWeek: priceField(false),
-  pricePerMonth: priceField(false),
+  offersWeeklyMonthly: z.boolean(),
   pricingNotes: optionalText(500, 'Pricing notes must be at most 500 characters'),
   availabilityNotes: optionalText(500, 'Availability notes must be at most 500 characters'),
   specialConditions: optionalText(1000, 'Special conditions must be at most 1000 characters'),
@@ -114,8 +116,7 @@ export function emptyVehicleFormValues(showrooms: readonly { id: string }[]): Ve
     pricePer6Hours: '',
     pricePer12Hours: '',
     pricePerDay: '',
-    pricePerWeek: '',
-    pricePerMonth: '',
+    offersWeeklyMonthly: false,
     pricingNotes: '',
     availabilityNotes: '',
     specialConditions: '',
@@ -147,6 +148,18 @@ export function sanitizeWholeNumberInput(text: string): string {
   return text.replace(/\D/g, '');
 }
 
+/**
+ * Whether the car is offered for weekly & monthly rental. A backend from
+ * before 2026-11-11 doesn't send the switch — then a week or month price
+ * stands for it, as the backend's migration did.
+ */
+export function offersWeeklyMonthly(
+  vehicle: Pick<FleetVehicle, 'offersWeeklyMonthly' | 'pricePerWeek' | 'pricePerMonth'>,
+): boolean {
+  if (typeof vehicle.offersWeeklyMonthly === 'boolean') return vehicle.offersWeeklyMonthly;
+  return vehicle.pricePerWeek != null || vehicle.pricePerMonth != null;
+}
+
 /** The form's values for an existing car. */
 export function vehicleToFormValues(vehicle: FleetVehicle, showrooms: readonly { id: string }[]): VehicleFormValues {
   return {
@@ -162,8 +175,7 @@ export function vehicleToFormValues(vehicle: FleetVehicle, showrooms: readonly {
     pricePer6Hours: priceToInput(vehicle.pricePer6Hours),
     pricePer12Hours: priceToInput(vehicle.pricePer12Hours),
     pricePerDay: priceToInput(vehicle.pricePerDay),
-    pricePerWeek: priceToInput(vehicle.pricePerWeek),
-    pricePerMonth: priceToInput(vehicle.pricePerMonth),
+    offersWeeklyMonthly: offersWeeklyMonthly(vehicle),
     pricingNotes: vehicle.pricingNotes ?? '',
     availabilityNotes: vehicle.availabilityNotes ?? '',
     specialConditions: vehicle.specialConditions ?? '',
@@ -187,7 +199,7 @@ export function normalizeFeatures(features: readonly string[]): string[] {
 }
 
 const OPTIONAL_TEXT_FIELDS = ['plateNumber', 'engineType', 'pricingNotes', 'availabilityNotes', 'specialConditions'] as const;
-const OPTIONAL_PRICE_FIELDS = ['pricePer6Hours', 'pricePer12Hours', 'pricePerWeek', 'pricePerMonth'] as const;
+const OPTIONAL_PRICE_FIELDS = ['pricePer6Hours', 'pricePer12Hours'] as const;
 
 type AssertClearable<T extends ClearableVehicleField> = T;
 export type OptionalFormField = AssertClearable<
@@ -204,6 +216,7 @@ function requiredFields(values: VehicleFormValues) {
     fuelType: values.fuelType as FuelType,
     seatingCapacity: Number(values.seatingCapacity),
     pricePerDay: Number(values.pricePerDay),
+    offersWeeklyMonthly: values.offersWeeklyMonthly,
     showroomId: values.showroomId,
     features: normalizeFeatures(values.features),
   };

@@ -200,8 +200,15 @@ export default function AdminVehicleDetailPage() {
           <DetailRow label="Engine" value={vehicle.engineType} />
           <DetailRow label="Price/6hrs" value={vehicle.pricePer6Hours ? `${getCurrencyCode(vehicle.showroom?.country)} ${Number(vehicle.pricePer6Hours).toLocaleString()}` : null} />
           <DetailRow label="Price/12hrs" value={vehicle.pricePer12Hours ? `${getCurrencyCode(vehicle.showroom?.country)} ${Number(vehicle.pricePer12Hours).toLocaleString()}` : null} />
-          <DetailRow label="Price/week" value={vehicle.pricePerWeek ? `${getCurrencyCode(vehicle.showroom?.country)} ${Number(vehicle.pricePerWeek).toLocaleString()}` : null} />
-          <DetailRow label="Price/month" value={vehicle.pricePerMonth ? `${getCurrencyCode(vehicle.showroom?.country)} ${Number(vehicle.pricePerMonth).toLocaleString()}` : null} />
+          {/* Weeks and months have no price since 2026-11-11 (plan A79) — the switch says whether it's offered (A84). */}
+          <DetailRow
+            label="Weekly & monthly"
+            value={
+              (vehicle.offersWeeklyMonthly ?? (vehicle.pricePerWeek != null || vehicle.pricePerMonth != null))
+                ? 'Offered, price to agree'
+                : 'Not offered'
+            }
+          />
           <DetailRow label="Location" value={vehicle.locationText} />
           <DetailRow label="Availability notes" value={vehicle.availabilityNotes} />
           <DetailRow label="Pricing notes" value={vehicle.pricingNotes} />

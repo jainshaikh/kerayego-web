@@ -2,24 +2,34 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { GuideByline } from '../../../../components/common/GuideByline';
+import { fetchDistinctCities, fetchWeeklyMonthlyCount } from '../../../../lib/api/server';
+import { weeklyMonthlyCityUrl } from '../../../../lib/utils/vehicleUrl';
+
+// Rewritten 2026-11-12 for the rental booking redesign (plan §3c): hours and
+// days have the car's own price; weeks and months have none — "price to
+// agree" (A79), asked for in the KerayeGo app with the driver's hours a day,
+// days a week and km a month (A85), on each city's weekly & monthly page
+// (A84). Never quote or estimate a week or month price here, and never say
+// what the driver costs (root CLAUDE.md, product rules).
+
+const DESCRIPTION =
+  'How renting a car with a driver by the hour or day compares with weekly and monthly rental on KerayeGo: set prices for hours and days, a price you agree for weeks and months.';
 
 export const metadata: Metadata = {
   title: 'Monthly vs. Daily Car Rental in Pakistan',
-  description:
-    "How KerayeGo's daily, weekly, and monthly car rental pricing works, and how to compare them.",
+  description: DESCRIPTION,
   keywords: [
     'monthly car rental Pakistan',
     'daily car rental Pakistan',
-    'weekly car rental price',
-    'KerayeGo pricing guide',
+    'weekly car rental Pakistan',
+    'car with driver monthly Pakistan',
   ],
   alternates: {
     canonical: '/guides/monthly-vs-daily-car-rental',
   },
   openGraph: {
     title: 'Monthly vs. Daily Car Rental in Pakistan',
-    description:
-      "How KerayeGo's daily, weekly, and monthly car rental pricing works, and how to compare them.",
+    description: DESCRIPTION,
   },
 };
 
@@ -38,7 +48,23 @@ const breadcrumbJsonLd = {
   ],
 };
 
-export default function MonthlyVsDailyCarRentalGuidePage() {
+function cityName(city: string): string {
+  return city
+    .split(/[\s-]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/** Cities with at least one car offered for weekly & monthly rental — each has its own page. */
+async function weeklyMonthlyCities(): Promise<string[]> {
+  const cities = (await fetchDistinctCities())?.data ?? [];
+  const counts = await Promise.all(cities.map((city) => fetchWeeklyMonthlyCount(city)));
+  return cities.filter((_, i) => counts[i] > 0).map((city) => city.toLowerCase());
+}
+
+export default async function MonthlyVsDailyCarRentalGuidePage() {
+  const cities = await weeklyMonthlyCities();
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <script
@@ -66,51 +92,89 @@ export default function MonthlyVsDailyCarRentalGuidePage() {
           title="Monthly vs. Daily Car Rental in Pakistan"
           path="/guides/monthly-vs-daily-car-rental"
           published="2026-09-19"
-          updated="2026-09-19"
+          updated="2026-11-12"
         />
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
-          On KerayeGo, a provider can price a vehicle by the day, week, or month — and sometimes
-          by the 6- or 12-hour block for shorter trips. Renting for longer often works out
-          cheaper per day than booking the same vehicle one day at a time.
+          On KerayeGo every car comes with the provider&rsquo;s own driver. You can rent it for 6
+          hours, 12 hours or 1 to 6 days at the car&rsquo;s own price. For a week or a month there
+          is no set price: you ask for one, and the business agrees it with you. Here is how the two
+          work and which one fits your trip.
         </p>
       </div>
 
       <section className="mb-8">
-        <h2 className="mb-2 text-base font-semibold text-ink">
-          Not every vehicle has every option
-        </h2>
+        <h2 className="mb-2 text-base font-semibold text-ink">Hours and days: a set price</h2>
         <p className="text-sm leading-relaxed text-text-muted">
-          Because each provider sets their own pricing, one vehicle might only have a daily rate
-          while another lists day, week, and month rates. Check the pricing section on a
-          vehicle&rsquo;s own listing page to see exactly which durations that provider offers.
+          Each car lists its own price for a day, and some for 6 or 12 hours as well. You choose the
+          package, the start time and your pickup and drop-off points in the KerayeGo app, and it
+          checks that the trip fits in the time you picked before you send the request. A day
+          package can be 1 to 6 days. If you need the car for 7 days or more, ask for a weekly or
+          monthly price instead.
         </p>
       </section>
 
       <section className="mb-8">
-        <h2 className="mb-2 text-base font-semibold text-ink">How to compare</h2>
+        <h2 className="mb-2 text-base font-semibold text-ink">Weeks and months: a price you agree</h2>
         <p className="text-sm leading-relaxed text-text-muted">
-          When a vehicle does list more than one duration, compare the per-day cost at each
-          length — for example, divide the weekly or monthly rate by 7 or by the number of days —
-          to see whether a longer booking is actually cheaper for your trip.
+          Long rentals differ too much for one fixed price: how many hours a day you need the
+          driver, how many days a week, and how far you&rsquo;ll go. So a weekly or monthly rental
+          has no price on KerayeGo. You send a request with those details, and the business calls
+          you to agree a price that suits both of you. Only cars the business has offered for
+          weekly and monthly rental can be asked for this way.
         </p>
       </section>
 
       <section className="mb-8">
-        <h2 className="mb-2 text-base font-semibold text-ink">
-          How to ask about a longer rental
-        </h2>
+        <h2 className="mb-2 text-base font-semibold text-ink">How to ask for a weekly or monthly price</h2>
+        <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-text-muted">
+          <li>Open a car offered for weekly and monthly rental in the KerayeGo app.</li>
+          <li>Choose a week (1 to 4) or a month (1 to 12) and the start date.</li>
+          <li>Add where the rental starts, where the car is handed back, and how many passengers.</li>
+          <li>
+            Say how many hours a day you need the driver, how many days a week, and roughly how many
+            kilometres a month.
+          </li>
+          <li>
+            The business calls you to agree the price and checks the documents it needs, such as your
+            CNIC. Nothing is paid online.
+          </li>
+        </ol>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-2 text-base font-semibold text-ink">Which one should you choose?</h2>
         <p className="text-sm leading-relaxed text-text-muted">
-          If a vehicle only shows a daily rate but you need it for a week or a month, send a
-          booking request and ask the provider directly — pricing for longer stays is something
-          you can always ask about even if it isn&rsquo;t listed.
+          For a trip, an event or a few busy days, book hours or days at the listed price — you know
+          the cost before you send the request. If you need a car and driver most days for weeks, ask
+          for a weekly or monthly price, then compare it with the car&rsquo;s day price for the days
+          you would actually use it.
         </p>
       </section>
+
+      {cities.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-2 text-base font-semibold text-ink">Where to find weekly and monthly cars</h2>
+          <p className="mb-3 text-sm leading-relaxed text-text-muted">
+            Each city has its own page of cars offered by the week or the month:
+          </p>
+          <div className="flex flex-wrap gap-2.5">
+            {cities.map((city) => (
+              <Link
+                key={city}
+                href={weeklyMonthlyCityUrl(city)}
+                className="inline-flex h-9 items-center rounded-control border border-border-subtle bg-page px-3.5 text-sm font-medium text-ink transition-colors hover:border-brand-600 hover:text-brand-700"
+              >
+                Weekly &amp; monthly in {cityName(city)}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-10 rounded-xl border border-border-subtle bg-surface p-6 text-center">
-        <h2 className="text-base font-semibold text-ink">Ready to compare vehicles?</h2>
+        <h2 className="text-base font-semibold text-ink">Ready to compare cars?</h2>
         <p className="mt-1.5 text-sm text-text-muted">
-          Browse vehicles and their pricing directly, or read the full guide on renting a car in
-          Pakistan.
+          Browse cars and their prices, or read the full guide on renting a car in Pakistan.
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <Link

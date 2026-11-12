@@ -6,9 +6,19 @@ import { useMyBookings, useUpdateBookingStatus } from '../../../../hooks/useBook
 import type { BookingRequest, BookingStatus } from '../../../../lib/api/bookings.api';
 import { cn } from '../../../../lib/utils/cn';
 import { getCurrencyCode } from '../../../../lib/utils/currency';
-import { formatDurationLabel } from '../../../../lib/utils/rentalDuration';
 import { getVehicleUrl } from '../../../../lib/utils/vehicleUrl';
-import { WhatsAppButton } from '../../../../components/ui';
+import { rideCountLabel } from '../../../../lib/utils/copy';
+import { durationLabel as packageLabel } from '../../../../lib/ops/bookingDisplay';
+import {
+  bookingPlaceSummary,
+  isPriceToAgree,
+  minutesLabel,
+  passengersLabel,
+  routeStopItems,
+  stopTimeLabel,
+} from '../../../../lib/ops/bookingRoute';
+import { BOOKING_TRIP_TYPE_LABELS } from '../../../../types/booking-requests.types';
+import { Avatar, RatingBadge, WhatsAppButton } from '../../../../components/ui';
 import { ConfirmModal } from '../../../../components/ops/ConfirmModal';
 
 const STATUS_META: Record<BookingStatus, { label: string; color: string }> = {
@@ -156,10 +166,16 @@ function UserInquiryCard({ inquiry, onCancel }: { inquiry: BookingRequest; onCan
     dateStyle: 'medium',
     timeStyle: 'short',
   });
-  const durationLabel =
-    inquiry.durationType && inquiry.durationQuantity
-      ? formatDurationLabel(inquiry.durationType, inquiry.durationQuantity)
-      : null;
+  // The package as people say it ("12 hours", "3 days", "1 week") and where the
+  // trip goes ("Hyderabad → Larkana · 330 km"), plan §3c.
+  const durationLabel = packageLabel(inquiry.durationType, inquiry.durationQuantity);
+  const places = bookingPlaceSummary(inquiry);
+  // The place summary already says "round trip"; only one way needs naming here.
+  const tripDetails = [
+    inquiry.tripType === 'ONE_WAY' ? BOOKING_TRIP_TYPE_LABELS.ONE_WAY : null,
+    passengersLabel(inquiry.passengerCount),
+  ].filter(Boolean);
+  const priceToAgree = isPriceToAgree(inquiry);
   const thumb = inquiry.vehicle.images?.[0]?.url;
   // The backend lets the customer cancel only while PENDING (BOOKING_TRANSITIONS:
   // once the provider has made contact only they or KerayeGo can move it) —
@@ -224,7 +240,18 @@ function UserInquiryCard({ inquiry, onCancel }: { inquiry: BookingRequest; onCan
                 {Number(inquiry.totalPrice).toLocaleString()} est.
               </>
             )}
+            {priceToAgree && <> · Price to agree — the business will call you</>}
           </div>
+
+          {(places || tripDetails.length > 0) && (
+            <div className="mt-1 text-xs text-slate-500">
+              {[places, ...tripDetails].filter(Boolean).join(' · ')}
+            </div>
+          )}
+
+          <RequestRoute inquiry={inquiry} />
+
+          <DriverCard inquiry={inquiry} />
 
           {/* Provider note */}
           {inquiry.providerNotes && (
@@ -236,7 +263,7 @@ function UserInquiryCard({ inquiry, onCancel }: { inquiry: BookingRequest; onCan
           {inquiry.status === 'NOT_STARTED' && (
             <p className="mt-2 text-xs text-slate-500">
               The booked period ended before this rental was started, so it was closed. You can send a new
-              inquiry for this car any time.
+              request for this car any time in the KerayeGo app.
             </p>
           )}
 
@@ -265,6 +292,100 @@ function UserInquiryCard({ inquiry, onCancel }: { inquiry: BookingRequest; onCan
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The request's stops in route order with the time the car should get there
+ * (plan §3c) — folded away under "Route" so the list stays short. Nothing on
+ * older requests, which have no stops.
+ */
+function RequestRoute({ inquiry }: { inquiry: BookingRequest }) {
+  const stops = routeStopItems(inquiry.stops);
+  if (stops.length === 0) return null;
+  return (
+    <details className="mt-2 text-xs text-slate-600">
+      <summary className="cursor-pointer font-medium text-slate-700">
+        Route · {stops.length} {stops.length === 1 ? 'stop' : 'stops'}
+        {inquiry.timeNeededMinutes != null && <> · about {minutesLabel(inquiry.timeNeededMinutes)}</>}
+      </summary>
+      <ol className="mt-1.5 space-y-1 border-l border-slate-200 pl-3">
+        {stops.map((stop) => (
+          <li key={stop.key}>
+            <span className="font-medium text-slate-700">{stop.title}</span>
+            {stop.expectedAt && <> · {stopTimeLabel(stop.expectedAt, inquiry.requestedFromDate)}</>}
+            {' — '}
+            {stop.place}
+            {stop.note && <span className="text-slate-400"> ({stop.note})</span>}
+          </li>
+        ))}
+      </ol>
+      <p className="mt-1 text-slate-400">Times are estimates without traffic.</p>
+    </details>
+  );
+}
+
+/**
+ * The driver card once a driver is assigned (plan A86) — photo, name, their
+ * rating and rides, and what KerayeGo checked: "Identity verified" / "Licence
+ * verified" (never "safe"; a check that didn't pass isn't shown). Call /
+ * WhatsApp when the backend sends the phone (D14: once the driver confirms
+ * the job). Same rules as the customer app's RentalDriverCard.
+ */
+function DriverCard({ inquiry }: { inquiry: BookingRequest }) {
+  const driver = inquiry.assignedDriver;
+  const shown = inquiry.status === 'ACCEPTED' || inquiry.status === 'IN_PROGRESS' || inquiry.status === 'COMPLETED';
+  if (!driver || !shown) return null;
+  const rideCount = driver.rideCount ?? 0;
+  const contactable = inquiry.status === 'ACCEPTED' || inquiry.status === 'IN_PROGRESS';
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Your driver</p>
+      <div className="mt-2 flex items-center gap-3">
+        {driver.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={driver.avatarUrl} alt={`${driver.name}'s photo`} className="h-11 w-11 rounded-full object-cover" />
+        ) : (
+          <Avatar name={driver.name} />
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">{driver.name}</p>
+          {(driver.rating || rideCount > 0) && (
+            <p className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+              <RatingBadge average={driver.rating?.average ?? null} count={driver.rating?.count ?? 0} size="sm" />
+              {rideCount > 0 && <span>· {rideCountLabel(rideCount)}</span>}
+            </p>
+          )}
+        </div>
+      </div>
+      {(driver.identityVerified || driver.licenceVerified) && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {driver.identityVerified && (
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+              ✓ Identity verified
+            </span>
+          )}
+          {driver.licenceVerified && (
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+              ✓ Licence verified
+            </span>
+          )}
+        </div>
+      )}
+      {contactable &&
+        (driver.phone ? (
+          <div className="mt-2 flex items-center gap-3">
+            <a href={`tel:${driver.phone}`} className="text-xs font-medium text-slate-700 hover:text-brand-700">
+              Call {driver.phone}
+            </a>
+            <WhatsAppButton phone={driver.phone} variant="text" label="WhatsApp driver" />
+          </div>
+        ) : (
+          inquiry.status === 'ACCEPTED' && (
+            <p className="mt-2 text-xs text-slate-500">You can call your driver once they confirm the job.</p>
+          )
+        ))}
     </div>
   );
 }

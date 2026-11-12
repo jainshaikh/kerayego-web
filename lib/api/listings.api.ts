@@ -7,6 +7,17 @@ export interface ListingImage {
   altText: string | null;
 }
 
+/**
+ * "This exact car" (plan A87): the car's own rating and rides across its plate
+ * (every listing of that plate) — the same figures as GET /reviews/summary.
+ */
+export interface CarRating {
+  /** 1 decimal; null with no ratings. */
+  averageRating: number | null;
+  reviewCount: number;
+  rideCount: number;
+}
+
 export interface ListingVehicleCard {
   id: string;
   slug: string;
@@ -17,8 +28,13 @@ export interface ListingVehicleCard {
   pricePer6Hours: string | null;
   pricePer12Hours: string | null;
   pricePerDay: string;
-  pricePerWeek: string | null;
-  pricePerMonth: string | null;
+  // No week or month prices since 2026-11-11 (plan A79): the backend stopped
+  // sending them. Weeks and months are a "price to agree" request, for cars
+  // the business switched on (A84).
+  /** Offered for weekly & monthly rental. Absent from a backend deployed before 2026-11-11. */
+  offersWeeklyMonthly?: boolean;
+  /** Absent from a backend deployed before 2026-11-11. */
+  carRating?: CarRating;
   transmission: Transmission;
   fuelType: FuelType;
   seatingCapacity: number;

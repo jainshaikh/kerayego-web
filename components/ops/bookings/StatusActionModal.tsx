@@ -16,8 +16,9 @@ import {
   type StatusNoteFormValues,
 } from '../../../lib/ops/statusAction';
 import { useUpdateBookingRequestStatus } from '../../../hooks/useBookingRequests';
-import type { BookingRequest, BookingStatus, EligibleDriver } from '../../../types/booking-requests.types';
+import type { BookingRequest, BookingStatus, CarClash, EligibleDriver } from '../../../types/booking-requests.types';
 import { DriverAvatar } from './BookingBits';
+import { CarClashWarning } from './CarClashWarning';
 import { DriverPickerList } from './DriverPickerList';
 
 const SUCCESS_TOAST: Partial<Record<BookingStatus, string>> = {
@@ -29,6 +30,8 @@ const SUCCESS_TOAST: Partial<Record<BookingStatus, string>> = {
 
 interface StatusActionModalProps {
   booking: BookingRequest;
+  /** The car's overlapping bookings (A88) — warned about before Accept. */
+  carClashes?: CarClash[];
   /** The move to confirm; null keeps it closed. */
   action: BusinessBookingAction | null;
   onClose: () => void;
@@ -42,7 +45,15 @@ interface StatusActionModalProps {
 // "Choose a driver" swaps the body for the driver picker (one modal, never a
 // modal over a modal); the pick is sent as assignedDriverId with the move to
 // ACCEPTED. "Assign later" sends none — the booking then shows "Needs a driver".
-export function StatusActionModal({ booking, action, onClose, onInviteDriver }: StatusActionModalProps) {
+// When the car is already booked at that time (carClashes, A88) the accept
+// step says so first — the backend would refuse it with VEHICLE_ALREADY_BOOKED.
+export function StatusActionModal({
+  booking,
+  carClashes = [],
+  action,
+  onClose,
+  onInviteDriver,
+}: StatusActionModalProps) {
   const updateStatus = useUpdateBookingRequestStatus(booking.id);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [step, setStep] = useState<'confirm' | 'pickDriver'>('confirm');
@@ -144,6 +155,7 @@ export function StatusActionModal({ booking, action, onClose, onInviteDriver }: 
       }
     >
       <div className="space-y-4">
+        {accepting ? <CarClashWarning clashes={carClashes} linked={false} /> : null}
         <p className="text-sm leading-relaxed text-text-muted">{copy.explanation}</p>
 
         {accepting ? (

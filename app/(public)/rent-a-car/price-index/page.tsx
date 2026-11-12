@@ -294,9 +294,9 @@ export default async function PriceIndexPage() {
                 booked today.
               </li>
               <li>
-                The price used is the daily rate the provider lists. Weekly, monthly and 6- or
-                12-hour rates aren&rsquo;t mixed in, and nothing is adjusted for negotiation or
-                season. Every car on KerayeGo is rented with the provider&rsquo;s driver; there are no
+                The price used is the daily rate the provider lists. 6- and 12-hour prices
+                aren&rsquo;t mixed in, weekly and monthly rentals have no listed price (the business
+                agrees one with the customer), and nothing is adjusted for negotiation or season. Every car on KerayeGo is rented with the provider&rsquo;s driver; there are no
                 self-drive listings.
               </li>
               <li>

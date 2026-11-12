@@ -34,6 +34,7 @@ import {
 import {
   FUEL_TYPE_OPTIONS,
   TRANSMISSION_OPTIONS,
+  offersWeeklyMonthly,
   toUpdateVehiclePayload,
   vehicleToFormValues,
   type VehicleFormValues,
@@ -218,6 +219,9 @@ function VehicleDetail({ vehicle, showrooms, back }: { vehicle: FleetVehicle; sh
           </p>
           {vehicle.plateNumber ? <p className="text-sm text-text-muted">Plate number: {vehicle.plateNumber}</p> : null}
           <p className="text-sm text-text-muted">Price per day: {formatPrice(vehicle.pricePerDay, currency)}</p>
+          <p className="text-sm text-text-muted">
+            Weekly &amp; monthly rental: {offersWeeklyMonthly(vehicle) ? 'Yes, price to agree' : 'Not offered'}
+          </p>
           {vehicle.features.length > 0 ? (
             <div className="flex flex-wrap gap-1.5 pt-1">
               {vehicle.features.map((feature) => (
