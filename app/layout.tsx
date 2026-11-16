@@ -70,6 +70,14 @@ export const metadata: Metadata = {
     icon: '/favicon.png',
     apple: '/apple-touch-icon.png',
   },
+  // Site ownership tags. Next renders each as <meta name="…" content="…"> in
+  // every page's <head>. Facebook / Meta Business domain verification (added
+  // 2026-11-16).
+  verification: {
+    other: {
+      'facebook-domain-verification': 'zfiebefiivrs2uymmvcbfu6exxk54s',
+    },
+  },
 };
 
 export const viewport: Viewport = {
