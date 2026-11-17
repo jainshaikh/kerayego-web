@@ -22,7 +22,8 @@ copying old numbers.
 | Framework | Next.js **14.2.35** installed (`package.json` says `^14.2.5`), App Router, React 18.3.1, TypeScript strict |
 | Hosting | **Vercel**, production at `https://www.kerayego.com` — evidence: the `rentalmarket.vercel.app` → `www.kerayego.com` 301 in `next.config.mjs:62-67`, `.vercel` in `.gitignore`, the backend comment at `kerayego-backend/src/modules/auth/auth.controller.ts:25`. No Dockerfile; build settings live in Vercel, not in this repo. |
 | Backend | `NEXT_PUBLIC_API_URL` (default `http://localhost:3001/v1`) — REST + the `/ride` Socket.IO namespace |
-| Size | **91 pages** — `(auth)` 4, `(dashboard)` 13, `(provider)` 22, `(driver)` 4, `(admin)` 18, `(public)` 29, homepage 1 — plus 2 route handlers; 26 hook files, 21 `lib/api` files, 150 component files, 11 Zod schema files |
+| Size | **91 pages** — `(auth)` 4, `(dashboard)` 13, `(provider)` 22, `(driver)` 4, `(admin)` 18, `(public)` 29, homepage 1 — plus 2 route handlers; 26 hook files, 21 `lib/api` files, 152 component files, 11 Zod schema files |
+| Operating company | **KERAYEGO (SMC-PRIVATE) LIMITED** — CUIN 0366464, FBR registration (NTN) K671998, registered office in Hyderabad (`lib/config/company.ts`). Its exact legal name must stay in server-rendered page text: every public footer, /about, /contact, /privacy, /terms (Meta Business Verification, 2026-11-17 — §23.4). |
 | Checks | `npx tsc --noEmit` → 0 errors; `npm run lint` → clean (both 2026-11-12). **No test suite** (§31). |
 | Env switches | Google Analytics loads only with `NEXT_PUBLIC_GA_ID`; app-store buttons stay hidden until `NEXT_PUBLIC_APP_STORE_URL`/`NEXT_PUBLIC_PLAY_STORE_URL` is set; maps need `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` |
 
@@ -93,7 +94,7 @@ kerayego-web/
   components/
     ui/                    Hand-rolled design-system primitives (barrel index.ts)                     §26
     common/                Logo, StatusBadge, ReviewsList, RatingSummaryBadge, Reveal, TrackEvent,
-                           AppDownloadButtons, GuideByline
+                           AppDownloadButtons, GuideByline, CompanyLegalLine, CompanyInformation
     layout/                DashboardSidebar, AdminSidebar (live), MobileSidebarBar, PublicNavbar,
                            IdentityHoldBanner, ActiveRideBanner
     auth/                  PhoneAuthFlow, SignInCodeStep
@@ -122,7 +123,8 @@ kerayego-web/
                            (Partner-app ports)                                                        §18–§20
     driver/                driver setup steps, verification, jobs, jobPlaces, working hours, errors   §21
     business/, documents/, team/, activity/    business-portal helpers                                §17
-    config/                markets (backend mirror), cityProfiles, apps (store links)                 §23.7
+    config/                markets (backend mirror), cityProfiles, apps (store links), company
+                           (legal name, CUIN, NTN, registered office)                                 §23.7
     providers/             query-provider, auth-bootstrap
     utils/                 cn, auth-cookies, analytics, copy, currency, datetime, geo-distance,
                            geolocation, pagination, phone, rentalDuration, safeRedirect, userLocation,
@@ -177,12 +179,12 @@ Six route groups plus the root homepage:
 
 | Group | URLs | Layout | Access (middleware, §5) |
 |---|---|---|---|
-| `(auth)` | `/login`, `/register`, `/verify-email`, `/verify-phone` | Server layout: Logo, BackButton, footer (Privacy, Terms); metadata title default `'Account'` | Signed-in users are sent away from `/login` and `/register` only |
+| `(auth)` | `/login`, `/register`, `/verify-email`, `/verify-phone` | Server layout: Logo, BackButton, footer (Privacy, Terms, then `CompanyLegalLine` without the address); metadata title default `'Account'` | Signed-in users are sent away from `/login` and `/register` only |
 | `(dashboard)` | `/dashboard/*` | `PhoneVerificationGate` → `IdentityHoldBanner`, `ActiveRideBanner basePath="/dashboard"`, `MobileSidebarBar brand="KerayeGo"` + `DashboardSidebar` | `USER` (a `PROVIDER` is sent to `/provider/dashboard`, except shared carpool sections, which are remapped) |
 | `(provider)` | `/provider/*` | `PhoneVerificationGate` → `ProviderPortal` (guards each route by `can()`) → `PortalFrame` | `USER` and `PROVIDER` — business access is by membership (§17) |
 | `(driver)` | `/driver/*` | `PhoneVerificationGate` → `DriverPortal` → `PortalFrame brand="KerayeGo Driver"` | `USER` and `PROVIDER` |
 | `(admin)` | `/admin/*` | `MobileSidebarBar brand="KerayeGo Admin"` + `components/layout/AdminSidebar` (rendered twice: drawer + desktop). **No phone gate, no role check of its own.** | `ADMIN`, `SUPER_ADMIN` |
-| `(public)` | everything else public | `PublicNavbar` + footer (©, About Us, FAQ, Guides, Safety, Contact, Privacy Policy, Terms & Conditions, Delete account, `AppDownloadButtons variant="links"`) | none |
+| `(public)` | everything else public | `PublicNavbar` + footer (©, About Us, FAQ, Guides, Safety, Contact, Privacy Policy, Terms & Conditions, Delete account, `AppDownloadButtons variant="links"`, then `CompanyLegalLine` — the operating company, §23.4) | none |
 | root | `/` | `app/page.tsx` sits outside `(public)`, so it renders its own `PublicNavbar` and a richer footer (§23.1) | none |
 
 `PortalFrame` (`components/workspace/PortalFrame.tsx`, shared by `/provider` and `/driver`) renders
@@ -347,7 +349,8 @@ backend (with `phoneVerified`, `whatsappUpdates`, mirrored in `types/api.types.t
 - `app/layout.tsx`: fonts Outfit (300–700, exposed as the CSS variable `--font-inter`) and IBM Plex
   Mono; metadata (title template `'%s | KerayeGo'`, OG locale `en_PK`, twitter `@Kerayego`, robots
   index/follow, **root `alternates.canonical: siteUrl`** — inherited by any page that doesn't set its
-  own); `themeColor #1A0F14`; JSON-LD Organization (`areaServed` PK) + WebSite SearchAction
+  own; `verification.other` → `<meta name="facebook-domain-verification">` on every page, Meta Business
+  domain verification); `themeColor #1A0F14`; JSON-LD Organization (`legalName` KERAYEGO (SMC-PRIVATE) LIMITED, `areaServed` PK) + WebSite SearchAction
   (`/rent-a-car?search=`). Renders `<GoogleAnalytics/>` (outside providers), then `QueryProvider` →
   `AuthBootstrap`, `PhoneGateListener`, children, `<Toaster position="top-right" richColors closeButton/>`.
   `siteUrl` = `NEXT_PUBLIC_SITE_URL` or `https://www.kerayego.com`.
@@ -1264,7 +1267,8 @@ cities, listings count, providers count. Sections: hero ("Find your perfect rent
 `/rent-a-car?search&city`, "Browse all vehicles", "List your fleet" → `/register?role=PROVIDER`,
 `HeroStats`, `HeroCollage` from the first 3 featured photos), 4 trust signals, featured grid, "Browse by
 city" (10), provider CTA. Footer: Logo, ©, Browse, Providers, Carpool, Price Index, About, FAQ, Guides,
-Safety, Contact, Privacy, Terms, Delete account, Sign in, app links. Copy says "real prices for 6 hours,
+Safety, Contact, Privacy, Terms, Delete account, Sign in, the operating company (`CompanyLegalLine`,
+§23.4), app links. Copy says "real prices for 6 hours,
 12 hours and days" — never week/month prices (A79). **No carpool section** (carpool is the
 owner's top priority — §32.3). `HeroCollage` always shows "Reply in ~14 min" (a hardcoded default).
 
@@ -1300,9 +1304,23 @@ each costs an extra redirect.
 ### 23.4 Content pages, sitemap, robots, OG
 
 - Static pages — about, contact, faq, safety, privacy, terms: metadata, canonical, Breadcrumb (FAQ also
-  FAQPage); privacy and terms dated "November 7, 2026"; contact/privacy/terms use a personal Gmail support
-  address (temporary per a code comment); privacy still names AWS for storage (storage moved to Google
-  Cloud Storage on 2026-11-07).
+  FAQPage); privacy and terms dated "November 17, 2026"; contact/privacy/terms use a personal Gmail
+  support address (temporary per a code comment); privacy still names AWS for storage (storage moved to
+  Google Cloud Storage on 2026-11-07).
+- **The operating company on the site** (2026-11-17, for Meta Business Verification, which refused the
+  site because the legal name wasn't on it). One source, `lib/config/company.ts` (`COMPANY`: legal name
+  **KERAYEGO (SMC-PRIVATE) LIMITED** exactly as registered, brand, CUIN 0366464, FBR registration (NTN)
+  K671998, registered office "House Number 845/3, Muhallah Pinjra Pole, Talaab Number 2, Hyderabad City,
+  Hyderabad, Sindh, Pakistan"). Shown as server-rendered text in: every public footer
+  (`components/common/CompanyLegalLine.tsx` — "KerayeGo is operated by KERAYEGO (SMC-PRIVATE) LIMITED." /
+  "Registered in Pakistan | CUIN: 0366464" / "Registered office: …"; the homepage, every `(public)` page,
+  and the sign-in pages without the address); a "Company information" block (legal name, brand,
+  registered in, CUIN, NTN, registered office — `components/common/CompanyInformation.tsx`) on /about and
+  /contact; /privacy and /terms ("operated by KERAYEGO (SMC-PRIVATE) LIMITED …, a company registered in
+  Pakistan (CUIN 0366464, FBR registration (NTN) K671998)", and the postal address); plus `legalName` in
+  the root Organization JSON-LD. Each sentence renders as one string, so the raw HTML holds it whole (no
+  `<!-- -->` markers). Never move the legal name into metadata, an image or client-only code. The
+  `facebook-domain-verification` meta tag (2026-11-16) is separate and must stay.
 - Guides: hub + `how-carpooling-works`, `how-to-offer-a-ride`, `carpool-safety-pakistan`,
   `how-to-rent-a-car-in-pakistan`, `how-to-list-your-car-for-rent`, `monthly-vs-daily-car-rental`; each has
   a 3-level Breadcrumb + Article JSON-LD via `GuideByline`. `how-to-offer-a-ride` swaps its web CTAs for
@@ -1629,6 +1647,10 @@ Reported, not fixed. Fix the code, then move the item to the changelog.
 
 ## 33. Changelog
 
+- **2026-11-16** (jainshaikh) — Added the Facebook / Meta domain-verification tag
+  (`<meta name="facebook-domain-verification" content="zfiebefiivrs2uymmvcbfu6exxk54s">`) through the root
+  metadata's `verification.other` in `app/layout.tsx`, so it's in every page's `<head>`. Checked on a dev
+  server (rendered in `/about`'s `<head>`); type-check and lint clean. §6.7.
 - **2026-11-12** (jainshaikh) — Rental booking redesign on the web (plan §3c/§3d, A74–A88; the backend
   half is from 2026-11-11 and **not on production yet** — every new field is read as optional, so the web
   keeps working on the old backend). Not deployed. `npx tsc --noEmit` and `npm run lint` clean; no test

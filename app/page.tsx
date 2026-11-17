@@ -17,6 +17,7 @@ import { HeroCollage } from '../components/home/HeroCollage';
 import { Reveal } from '../components/common/Reveal';
 import { Logo } from '../components/common/Logo';
 import { AppDownloadButtons } from '../components/common/AppDownloadButtons';
+import { CompanyLegalLine } from '../components/common/CompanyLegalLine';
 import { USER_LOCATION_COOKIE, DEFAULT_NEARBY_RADIUS_KM, parseUserLocation } from '../lib/utils/userLocation';
 
 export const metadata: Metadata = {
@@ -319,6 +320,8 @@ export default async function HomePage() {
             </Link>
           </div>
         </div>
+        {/* The operating company (Meta Business Verification needs the legal name on the site). */}
+        <CompanyLegalLine className="mx-auto max-w-3xl border-t border-border-subtle px-4 py-5 text-text-faint" />
         <AppDownloadButtons variant="links" className="px-4 pb-8 text-xs text-text-faint" />
       </footer>
     </div>

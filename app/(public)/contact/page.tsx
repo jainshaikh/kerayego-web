@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight, Mail, Phone } from 'lucide-react';
 import { WhatsAppButton } from '../../../components/ui';
+import { CompanyInformation } from '../../../components/common/CompanyInformation';
 
 const SUPPORT_EMAIL = 'jainshaikh@gmail.com';
 const SUPPORT_PHONE_DISPLAY = '+92 331 3693668';
@@ -88,6 +89,8 @@ export default function ContactPage() {
           <WhatsAppButton phone={SUPPORT_PHONE_TEL} label="Chat with us on WhatsApp" />
         </div>
       </div>
+
+      <CompanyInformation className="mt-8" />
 
       <p className="mt-8 text-center text-sm text-text-muted">
         Looking for a quick answer?{' '}

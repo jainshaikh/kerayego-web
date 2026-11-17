@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BackButton } from '../../components/ui';
 import { Logo } from '../../components/common/Logo';
+import { CompanyLegalLine } from '../../components/common/CompanyLegalLine';
 
 export const metadata: Metadata = {
   title: {
@@ -36,6 +37,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             Terms
           </Link>
         </p>
+        <CompanyLegalLine withAddress={false} className="mt-1.5 px-4" />
       </footer>
     </div>
   );

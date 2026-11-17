@@ -2,25 +2,25 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { COMPANY } from '../../../lib/config/company';
 
 // Rewritten 2026-11-07 to match the platform as built (phone + WhatsApp
 // sign-in, WhatsApp updates, live location, driver verification, account
 // deletion) and published (draft banner and noindex removed) at the owner's
-// request. The company name is the one SECP reserved on 2026-11-02 and is not
-// incorporated yet — ENTITY_STATUS says so; change it to "a company
-// registered in Pakistan" (and the same constant in /terms) once the SECP
-// certificate is issued. Support email/phone are real (given 2026-09-19,
-// temporary until an @kerayego.com address exists — that fact itself must
-// never appear on the public page). Keep the service providers in section 6
-// in step with the backend's integrations.
-const LEGAL_ENTITY_NAME = 'KerayeGo (SMC-Private) Limited';
-const ENTITY_STATUS = 'a company being incorporated in Pakistan';
-const REGISTERED_ADDRESS =
-  'House No. 845/3, Noor Masjid Street, Pinjrapole, Hyderabad, Sindh 71000, Pakistan';
+// request. The operating company is incorporated (2026-11-17: SECP CUIN and
+// FBR NTN in lib/config/company.ts, which also holds its exact legal name for
+// Meta Business Verification — keep that text in the page). Support
+// email/phone are real (given 2026-09-19, temporary until an @kerayego.com
+// address exists — that fact itself must never appear on the public page).
+// Keep the service providers in section 6 in step with the backend's
+// integrations.
+const LEGAL_ENTITY_NAME = COMPANY.legalName;
+const ENTITY_STATUS = `a company registered in Pakistan (CUIN ${COMPANY.cuin}, FBR registration (NTN) ${COMPANY.ntn})`;
+const REGISTERED_ADDRESS = COMPANY.registeredOffice;
 const SUPPORT_EMAIL = 'jainshaikh@gmail.com';
 const SUPPORT_PHONE_DISPLAY = '+92 331 3693668';
 const SUPPORT_PHONE_TEL = '+923313693668';
-const LAST_UPDATED = 'November 7, 2026';
+const LAST_UPDATED = 'November 17, 2026';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -347,7 +347,9 @@ export default function PrivacyPolicyPage() {
                 {SUPPORT_PHONE_DISPLAY}
               </a>
             </li>
-            <li>Post: {REGISTERED_ADDRESS}</li>
+            <li>
+              Post: {LEGAL_ENTITY_NAME}, {REGISTERED_ADDRESS}
+            </li>
           </List>
         </Section>
       </div>

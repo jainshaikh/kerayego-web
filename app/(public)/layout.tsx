@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PublicNavbar } from '../../components/layout/PublicNavbar';
 import { AppDownloadButtons } from '../../components/common/AppDownloadButtons';
+import { CompanyLegalLine } from '../../components/common/CompanyLegalLine';
 
 const FOOTER_LINKS = [
   { href: '/about', label: 'About Us' },
@@ -30,6 +31,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </div>
         </div>
         <AppDownloadButtons variant="links" className="mt-3 px-4 text-sm text-slate-500" />
+        {/* The operating company (Meta Business Verification needs the legal name on the site). */}
+        <CompanyLegalLine className="mx-auto mt-4 max-w-3xl border-t border-slate-100 px-4 pt-4 text-slate-500" />
       </footer>
     </div>
   );

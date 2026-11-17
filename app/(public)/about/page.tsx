@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight, Car, Users, ShieldCheck, MapPin } from 'lucide-react';
+import { CompanyInformation } from '../../../components/common/CompanyInformation';
 
 export const metadata: Metadata = {
   title: 'About Us',
@@ -141,6 +142,8 @@ export default function AboutPage() {
           We&rsquo;re expanding beyond Pakistan into Saudi Arabia and the UAE next.
         </p>
       </section>
+
+      <CompanyInformation className="mb-10" />
 
       <section className="rounded-xl border border-border-subtle bg-surface p-6 text-center">
         <h2 className="text-base font-semibold text-ink">Get started</h2>

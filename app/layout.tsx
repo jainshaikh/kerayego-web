@@ -5,6 +5,7 @@ import { QueryProvider } from '../lib/providers/query-provider';
 import { AuthBootstrap } from '../lib/providers/auth-bootstrap';
 import { PhoneGateListener } from '../components/account/PhoneGateListener';
 import { GoogleAnalytics } from '../components/analytics/GoogleAnalytics';
+import { COMPANY } from '../lib/config/company';
 import './globals.css';
 
 // The CSS variable names are unchanged (--font-inter / --font-mono) so
@@ -88,6 +89,7 @@ const organizationJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: 'KerayeGo',
+  legalName: COMPANY.legalName,
   url: siteUrl,
   areaServed: 'PK',
   sameAs: [],
